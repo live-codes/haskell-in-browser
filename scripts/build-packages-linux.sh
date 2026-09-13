@@ -21,12 +21,14 @@ COMMIT=455782164e75998b140d869c1b7cdde0c8a21508
 WORK=${WORK:-/build}
 OUT=${OUT:-/out}
 DB=${DB:-/db}
-# Packages to install in addition to base (base is embedded in the browser bundle).
-PACKAGES=${PACKAGES:-"array transformers mtl containers"}
+# Packages to build. `base` is embedded in the browser bundle, so it is not shipped.
+# MicroCabal substitutes a few names (array -> array-mhs, random -> random-mhs) and
+# injects ghc-compat into every third-party package.
+PACKAGES=${PACKAGES:-"array transformers mtl containers random time HUnit QuickCheck hspec"}
 
 mkdir -p "$WORK" "$OUT" "$DB"
-# Start clean: a stale .pkg would otherwise be mistaken for a successful build.
-rm -rf "$DB"/* 2>/dev/null || true
+# Clear stale artifacts, but keep an existing package DB so re-runs only build what
+# is missing (mount /db to persist it between container runs).
 rm -f "$OUT"/*.pkg 2>/dev/null || true
 
 log() { echo; echo "=== $* ==="; }
@@ -74,14 +76,16 @@ fi
 export MHSCPPHS="$MHS_DIR/bin/cpphs"
 
 # ------------------------------------------------------------------ base package
-log "installing base into $DB"
-( cd lib && mcabal --install="$DB" install )
+if [ -f "$DB/mhs-0.16.6.0/packages/base-0.16.6.0.pkg" ]; then
+  log "base already installed in $DB"
+else
+  log "installing base into $DB"
+  ( cd lib && mcabal --install="$DB" install )
+fi
 echo "-- where did base land? --"
 find "$DB" -name 'base-*.pkg' -printf '%s  %p\n' 2>/dev/null || find "$DB" -name 'base-*.pkg' 2>/dev/null
-echo "-- DB root --"
-ls "$DB" 2>/dev/null | head -20 || true
 find "$DB" -name 'base-*.pkg' -exec cp {} "$OUT/" \; 2>/dev/null || true
-ls -l "$OUT" || true
+ls -l "$OUT" | head -5 || true
 
 # ------------------------------------------------------- extra packages + DB
 # mcabal accepts a single package per invocation (install [PKG]).
@@ -90,8 +94,14 @@ mcabal update || echo "(mcabal update failed; continuing)"
 
 for p in $PACKAGES; do
   log "installing $p"
+  # MicroHs's own Makefile.packages builds QuickCheck from git rather than the
+  # Hackage release: QuickCheck 2.16.0.0 hits a kind error in mhs.
+  gitopt=""
+  case "$p" in
+    QuickCheck) gitopt="--git=https://github.com/nick8325/quickcheck.git" ;;
+  esac
   # mcabal takes all flags before the command, and a single package per invocation.
-  if mcabal --install="$DB" -r install "$p"; then
+  if mcabal --install="$DB" -r install $gitopt "$p"; then
     echo "ok: $p"
   else
     echo "FAILED: $p"

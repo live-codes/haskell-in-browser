@@ -21,12 +21,11 @@ mcabal: Building library base
 mcabal: Installing library base
 -- where did base land? --
 817973  /db/mhs-0.16.6.0/packages/base-0.16.6.0.pkg
--- DB root --
-mhs-0.16.6.0
-total 900
--rw-r--r-- 1 root root 817973 Sep 13 06:52 base-0.16.6.0.pkg
--rw-r--r-- 1 root root    729 Sep 13 06:52 build.log
--rw-r--r-- 1 root root  96052 Sep 13 05:29 packages.txt
+total 912
+-rw-r--r-- 1 root root 817973 Sep 13 08:09 base-0.16.6.0.pkg
+-rw-r--r-- 1 root root    702 Sep 13 08:09 build.log
+drwxr-xr-x 1 root root   4096 Sep 13 08:02 mhs-0.16.6.0
+-rw-r--r-- 1 root root  96052 Sep 13 08:02 packages.txt
 
 === refreshing the package set ===
 Changing package random to random-mhs
@@ -82,17 +81,156 @@ mcabal: Building library containers
 mcabal: Installing library containers
 ok: containers
 
+=== installing random ===
+Changing package random to random-mhs
+Installing package dist-mcabal/time-1.15.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/splitmix-0.1.3.2.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/random-mhs-1.3.2.2.pkg in /db/mhs-0.16.6.0
+mcabal: Build package random-mhs
+mcabal: Running 'fetch random-mhs'
+mcabal: Building in /db/packages/random-mhs-1.3.2.2
+mcabal: Building library random-mhs
+mcabal:   Build package splitmix
+mcabal:   Running 'fetch splitmix'
+mcabal:   Building in /db/packages/splitmix-0.1.3.2
+mcabal:   Building library splitmix
+mcabal:     Build package time
+mcabal:     Running 'fetch time'
+mcabal:     Building in /db/packages/time-1.15
+mcabal:     Building library time
+mcabal:     Installing library time
+mcabal:   Return to building target
+mcabal:   Installing library splitmix
+mcabal: Return to building target
+mcabal: Installing library random-mhs
+ok: random
+
+=== installing time ===
+Installing package dist-mcabal/time-1.15.pkg in /db/mhs-0.16.6.0
+mcabal: Build package time
+mcabal: Building in /db/packages/time-1.15
+mcabal: Building library time
+mcabal: Installing library time
+ok: time
+
+=== installing HUnit ===
+Installing package dist-mcabal/call-stack-0.4.0.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/HUnit-1.6.2.0.pkg in /db/mhs-0.16.6.0
+mcabal: Build package HUnit
+mcabal: Running 'fetch HUnit'
+mcabal: Building in /db/packages/HUnit-1.6.2.0
+mcabal: Building library HUnit
+mcabal:   Build package call-stack
+mcabal:   Running 'fetch call-stack'
+mcabal:   Building in /db/packages/call-stack-0.4.0
+mcabal:   Building library call-stack
+mcabal:   Installing library call-stack
+mcabal: Return to building target
+mcabal: Installing library HUnit
+ok: HUnit
+
+=== installing QuickCheck ===
+Changing package random to random-mhs
+Installing package dist-mcabal/QuickCheck-2.18.0.0.pkg in /db/mhs-0.16.6.0
+mcabal: Build package QuickCheck
+mcabal: Running 'fetch QuickCheck'
+mcabal: Building in /db/packages/QuickCheck-2.16.0.0
+mcabal: Building library QuickCheck
+mcabal: Installing library QuickCheck
+ok: QuickCheck
+
+=== installing hspec ===
+Installing package dist-mcabal/colour-2.3.7.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/ansi-terminal-types-1.1.3.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/ansi-terminal-1.1.5.pkg in /db/mhs-0.16.6.0
+Changing package array to array-mhs
+Installing package dist-mcabal/exceptions-0.10.11.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/os-string-2.0.10.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/filepath-1.5.5.0.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/haskell-lexer-1.2.1.pkg in /db/mhs-0.16.6.0
+
+mhs: uncaught exception: error: "src/Test/Hspec/Expectations.hs": line 65, col 34: not exported: HasCallStack
+
+mcabal: uncaught exception: error: "/build/MicroHs/lib/System/Process.hs",22:22: callCommand: failed 256, cmd=
+"mhs -Phspec-expectations-0.8.4 -odist-mcabal/hspec-expectations-0.8.4.pkg -i -isrc -idist-mcabal/autogen '-DVERSION_ghc_compat=\"0.5.11.0\"' '-DMIN_VERSION_ghc_compat(x,y,z)=((x)<0||(x)==0&&(y)<5||(x)==0&&(y)==5&&(z)<=11)' '-DVERSION_HUnit=\"1.6.2.0\"' '-DMIN_VERSION_HUnit(x,y,z)=((x)<1||(x)==1&&(y)<6||(x)==1&&(y)==6&&(z)<=2)' '-DVERSION_base=\"4.19.1.0\"' '-DMIN_VERSION_base(x,y,z)=((x)<4||(x)==4&&(y)<19||(x)==4&&(y)==19&&(z)<=1)' '-DVERSION_call_stack=\"0.4.0\"' '-DMIN_VERSION_call_stack(x,y,z)=((x)<0||(x)==0&&(y)<4||(x)==0&&(y)==4&&(z)<=0)' -a. Test.Hspec.Expectations Test.Hspec.Expectations.Contrib"
+mcabal: Build package hspec
+mcabal: Running 'fetch hspec'
+mcabal: Building in /db/packages/hspec-2.11.17
+mcabal: Building library hspec
+mcabal:   Build package hspec-core
+mcabal:   Running 'fetch hspec-core'
+mcabal:   Building in /db/packages/hspec-core-2.11.17
+mcabal:   Building library hspec-core
+mcabal:     Build package ansi-terminal
+mcabal:     Running 'fetch ansi-terminal'
+mcabal:     Building in /db/packages/ansi-terminal-1.1.5
+mcabal:     Building library ansi-terminal
+mcabal:       Build package ansi-terminal-types
+mcabal:       Running 'fetch ansi-terminal-types'
+mcabal:       Building in /db/packages/ansi-terminal-types-1.1.3
+mcabal:       Building library ansi-terminal-types
+mcabal:         Build package colour
+mcabal:         Running 'fetch colour'
+mcabal:         Building in /db/packages/colour-2.3.7
+mcabal:         Building library colour
+mcabal:         Installing library colour
+mcabal:       Return to building target
+mcabal:       Installing library ansi-terminal-types
+mcabal:     Return to building target
+mcabal:     Installing library ansi-terminal
+mcabal:   Return to building target
+mcabal:     Build package filepath
+mcabal:     Running 'fetch filepath'
+mcabal:     Building in /db/packages/filepath-1.5.5.0
+mcabal:     Building library filepath
+mcabal:       Build package exceptions
+mcabal:       Running 'fetch exceptions'
+mcabal:       Building in /db/packages/exceptions-0.10.11
+mcabal:       Building library exceptions
+mcabal:       Installing library exceptions
+mcabal:     Return to building target
+mcabal:       Build package os-string
+mcabal:       Running 'fetch os-string'
+mcabal:       Building in /db/packages/os-string-2.0.10
+mcabal:       Building library os-string
+mcabal:       Installing library os-string
+mcabal:     Return to building target
+mcabal:     Installing library filepath
+mcabal:   Return to building target
+mcabal:     Build package haskell-lexer
+mcabal:     Running 'fetch haskell-lexer'
+mcabal:     Building in /db/packages/haskell-lexer-1.2.1
+mcabal:     Building library haskell-lexer
+mcabal:     Installing library haskell-lexer
+mcabal:   Return to building target
+mcabal:     Build package hspec-expectations
+mcabal:     Running 'fetch hspec-expectations'
+mcabal:     Building in /db/packages/hspec-expectations-0.8.4
+mcabal:     Building library hspec-expectations
+FAILED: hspec
+
 === collecting package DB files ===
 
 === output ===
+    208218  HUnit-1.6.2.0.pkg
+    497229  QuickCheck-2.18.0.0.pkg
+    192650  ansi-terminal-1.1.5.pkg
+    194368  ansi-terminal-types-1.1.3.pkg
     221157  array-mhs-0.5.8.0.pkg
     817973  base-0.16.6.0.pkg
-      2916  build.log
+      8953  build.log
+    181099  call-stack-0.4.0.pkg
+    231904  colour-2.3.7.pkg
     480013  containers-0.8.pkg
+    276822  exceptions-0.10.11.pkg
+    303965  filepath-1.5.5.0.pkg
     244188  ghc-compat-0.5.11.0.pkg
+    231592  haskell-lexer-1.2.1.pkg
         24  mhs-0.16.6.0/Control/Applicative/Backwards.txt
         24  mhs-0.16.6.0/Control/Applicative/Lift.txt
         13  mhs-0.16.6.0/Control/Monad/Accum.txt
+        22  mhs-0.16.6.0/Control/Monad/Catch.txt
+        22  mhs-0.16.6.0/Control/Monad/Catch/Pure.txt
         13  mhs-0.16.6.0/Control/Monad/Cont.txt
         13  mhs-0.16.6.0/Control/Monad/Cont/Class.txt
         13  mhs-0.16.6.0/Control/Monad/Error/Class.txt
@@ -151,6 +289,17 @@ ok: containers
         21  mhs-0.16.6.0/Data/Array/Storable/Safe.txt
         21  mhs-0.16.6.0/Data/Array/Unboxed.txt
         21  mhs-0.16.6.0/Data/Array/Unsafe.txt
+        20  mhs-0.16.6.0/Data/CallStack.txt
+        16  mhs-0.16.6.0/Data/Colour.txt
+        16  mhs-0.16.6.0/Data/Colour/CIE.txt
+        16  mhs-0.16.6.0/Data/Colour/CIE/Illuminant.txt
+        16  mhs-0.16.6.0/Data/Colour/Names.txt
+        16  mhs-0.16.6.0/Data/Colour/Ok.txt
+        16  mhs-0.16.6.0/Data/Colour/RGBSpace.txt
+        16  mhs-0.16.6.0/Data/Colour/RGBSpace/HSL.txt
+        16  mhs-0.16.6.0/Data/Colour/RGBSpace/HSV.txt
+        16  mhs-0.16.6.0/Data/Colour/SRGB.txt
+        16  mhs-0.16.6.0/Data/Colour/SRGB/Linear.txt
         18  mhs-0.16.6.0/Data/Containers/ListUtils.txt
         24  mhs-0.16.6.0/Data/Functor/Constant.txt
         24  mhs-0.16.6.0/Data/Functor/Reverse.txt
@@ -179,6 +328,22 @@ ok: containers
         18  mhs-0.16.6.0/Data/Sequence/Internal/Sorting.txt
         18  mhs-0.16.6.0/Data/Set.txt
         18  mhs-0.16.6.0/Data/Set/Internal.txt
+        13  mhs-0.16.6.0/Data/Time.txt
+        13  mhs-0.16.6.0/Data/Time/Calendar.txt
+        13  mhs-0.16.6.0/Data/Time/Calendar/Easter.txt
+        13  mhs-0.16.6.0/Data/Time/Calendar/Julian.txt
+        13  mhs-0.16.6.0/Data/Time/Calendar/Month.txt
+        13  mhs-0.16.6.0/Data/Time/Calendar/MonthDay.txt
+        13  mhs-0.16.6.0/Data/Time/Calendar/OrdinalDate.txt
+        13  mhs-0.16.6.0/Data/Time/Calendar/Quarter.txt
+        13  mhs-0.16.6.0/Data/Time/Calendar/WeekDate.txt
+        13  mhs-0.16.6.0/Data/Time/Clock.txt
+        13  mhs-0.16.6.0/Data/Time/Clock/POSIX.txt
+        13  mhs-0.16.6.0/Data/Time/Clock/System.txt
+        13  mhs-0.16.6.0/Data/Time/Clock/TAI.txt
+        13  mhs-0.16.6.0/Data/Time/Format.txt
+        13  mhs-0.16.6.0/Data/Time/Format/ISO8601.txt
+        13  mhs-0.16.6.0/Data/Time/LocalTime.txt
         18  mhs-0.16.6.0/Data/Tree.txt
         23  mhs-0.16.6.0/GHC/Conc.txt
         23  mhs-0.16.6.0/GHC/Conc/Sync.txt
@@ -209,11 +374,68 @@ ok: containers
         23  mhs-0.16.6.0/GHC/TypeLits.txt
         23  mhs-0.16.6.0/GHC/Types.txt
         23  mhs-0.16.6.0/GHC/Word.txt
+        23  mhs-0.16.6.0/Language/Haskell/Lexer.txt
         23  mhs-0.16.6.0/Language/Haskell/TH/Quote.txt
         23  mhs-0.16.6.0/Language/Haskell/TH/Syntax.txt
+        23  mhs-0.16.6.0/System/Console/ANSI.txt
+        29  mhs-0.16.6.0/System/Console/ANSI/Codes.txt
+        29  mhs-0.16.6.0/System/Console/ANSI/Types.txt
+        20  mhs-0.16.6.0/System/FilePath.txt
+        20  mhs-0.16.6.0/System/FilePath/Posix.txt
+        20  mhs-0.16.6.0/System/FilePath/Windows.txt
+        20  mhs-0.16.6.0/System/OsPath.txt
+        20  mhs-0.16.6.0/System/OsPath/Encoding.txt
+        20  mhs-0.16.6.0/System/OsPath/Internal.txt
+        20  mhs-0.16.6.0/System/OsPath/Posix.txt
+        20  mhs-0.16.6.0/System/OsPath/Posix/Internal.txt
+        20  mhs-0.16.6.0/System/OsPath/Types.txt
+        20  mhs-0.16.6.0/System/OsPath/Windows.txt
+        20  mhs-0.16.6.0/System/OsPath/Windows/Internal.txt
+        20  mhs-0.16.6.0/System/OsString.txt
+        20  mhs-0.16.6.0/System/OsString/Data/ByteString/Short.txt
+        20  mhs-0.16.6.0/System/OsString/Data/ByteString/Short/Internal.txt
+        20  mhs-0.16.6.0/System/OsString/Data/ByteString/Short/Word16.txt
+        20  mhs-0.16.6.0/System/OsString/Encoding.txt
+        20  mhs-0.16.6.0/System/OsString/Encoding/Internal.txt
+        20  mhs-0.16.6.0/System/OsString/Internal.txt
+        20  mhs-0.16.6.0/System/OsString/Internal/Exception.txt
+        20  mhs-0.16.6.0/System/OsString/Internal/Types.txt
+        20  mhs-0.16.6.0/System/OsString/Posix.txt
+        20  mhs-0.16.6.0/System/OsString/Windows.txt
         23  mhs-0.16.6.0/System/Posix/Internals.txt
+        22  mhs-0.16.6.0/System/Random.txt
+        22  mhs-0.16.6.0/System/Random/Internal.txt
+        20  mhs-0.16.6.0/System/Random/SplitMix.txt
+        20  mhs-0.16.6.0/System/Random/SplitMix32.txt
+        22  mhs-0.16.6.0/System/Random/Stateful.txt
+        17  mhs-0.16.6.0/Test/HUnit.txt
+        17  mhs-0.16.6.0/Test/HUnit/Base.txt
+        17  mhs-0.16.6.0/Test/HUnit/Lang.txt
+        17  mhs-0.16.6.0/Test/HUnit/Terminal.txt
+        17  mhs-0.16.6.0/Test/HUnit/Text.txt
+        23  mhs-0.16.6.0/Test/QuickCheck.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Arbitrary.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Compat.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Exception.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Features.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Function.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Gen.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Gen/Unsafe.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Modifiers.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Monadic.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Monoids.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Poly.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Property.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Random.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/State.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Test.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/Text.txt
     259214  mtl-2.3.2.pkg
+    312236  os-string-2.0.10.pkg
      96052  packages.txt
+    340079  random-mhs-1.3.2.2.pkg
+    208705  splitmix-0.1.3.2.pkg
+    305131  time-1.15.pkg
     279699  transformers-0.6.2.0.pkg
 
 === done ===

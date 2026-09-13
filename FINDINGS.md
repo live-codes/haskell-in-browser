@@ -117,10 +117,11 @@ that should be errors are not reported**.
 `TypeFamilies`, Template Haskell and `DeriveGeneric` are the notable modern-GHC
 omissions; everything a typical introductory-to-intermediate course needs is present.
 
-### Library modules — 91/97 probed available
+### Library modules — 93/97 probed available
 
-`Data.Map`/`Data.Set`/`Data.Sequence`, `Control.Monad.State` and `Data.Array` are now shipped
-(see "Bundle additions"), so the earlier tutorial-staple gaps are closed.
+`Data.Map`/`Data.Set`/`Data.Sequence`, `Control.Monad.State`, `Data.Array`, `System.Random`,
+`Data.Time`, `Test.HUnit` and `Test.QuickCheck` are now shipped (see "Bundle additions"), so
+the tutorial-staple gaps are closed.
 
 Present: `Prelude`, `Data.List/Maybe/Char/Either/Tuple`, **`Data.Text` (+Lazy, IO,
 Encoding)**, **`Data.ByteString` (+Char8, Lazy, Short, Builder)**, `Data.Ratio`,
@@ -135,17 +136,18 @@ Encoding)**, **`Data.ByteString` (+Char8, Lazy, Short, Builder)**, `Data.Ratio`,
 Originally missing, now **shipped as runtime packages** (verified importable):
 **`containers`** (`Data.Map`, `Data.Set`, `Data.Sequence`, `Data.IntMap`, `Data.IntSet`,
 `Data.Tree`, `Data.Graph`), **`mtl`** (`Control.Monad.State/Reader/Writer/Except/RWS`) via
-`transformers`, and **`array`** (`Data.Array`, `Data.Array.ST`, `Data.Array.IO`), plus the
-`ghc-compat` shim that `containers` needs. See "Bundle additions" below; this raised the probed
-availability from 76/97 to 91/97.
+`transformers`, **`array`** (`Data.Array`, `Data.Array.ST`, `Data.Array.IO`), **`random`**
+(`System.Random`), **`time`** (`Data.Time`), **`HUnit`** and **`QuickCheck`** — plus the
+`ghc-compat` shim and small dependencies (`call-stack`, `splitmix`). See "Bundle additions"
+below; this raised probed availability from 76/97 to **93/97**.
 
-Still missing (verified "Module not found"):
-`Text.Parsec`, `Text.Megaparsec`; `System.Random`; `Data.Time`;
-`Test.HUnit`, `Test.QuickCheck`, `Test.Hspec`; `Data.Vector`, `Control.Lens`, `Data.Aeson`.
+Still missing (verified "Module not found"): `Text.Parsec`, `Text.Megaparsec`;
+`Test.Hspec`; `Data.Vector`, `Control.Lens`, `Data.Aeson`.
 
-Those all build with MicroHs too (`Makefile.packages` lists transformers, parsec, QuickCheck,
-HUnit, hspec, random, binary, fingertree, heaps, fgl, …), so closing them is the same
-packaging step rather than a compiler limitation.
+`parsec`, `vector` and `aeson` build with MicroHs (`Makefile.packages` lists parsec, heaps,
+fingertree, fgl, …), so those are the same packaging step rather than a compiler limitation.
+`hspec` is a genuine exception: it needs `HasCallStack` from `GHC.Stack`, which `ghc-compat`
+does not provide (see below).
 
 Also from the wiki's compliance table, even "present" modules are incomplete in places:
 `System.IO` lacks `hSeek`/`hTell`/`hIsEOF`/`hPrint`/`HandlePosn`/`SeekMode`;
@@ -162,9 +164,9 @@ Mostly no, with three real caveats:
    `Module not found: Data.Map`), but there is no GHC-quality type-error explanation.
    The FAQ's answer — *"Why are the error messages so bad? Error messages are boring."* —
    is a design stance. For someone learning types, this is the biggest drawback.
-2. **Testing frameworks still missing:** `hspec`/`HUnit`/`QuickCheck` are not packaged yet.
-   `Data.Map`/`Data.Set`/`State`/`Array` now work, so word-count, memoisation and
-   monad-transformer examples are fine.
+2. **Testing is partly covered:** `HUnit` and `QuickCheck` work (QuickCheck needs `maxSuccess`
+   lowered — the default 100 traps the wasm at ~74 tests). `hspec` does not build because
+   `ghc-compat` lacks `HasCallStack`.
 3. **Weak safety net:** things that should be errors often are not, so a learner gets
    less feedback than GHC would give.
 
@@ -272,26 +274,64 @@ docker run --rm -v <repo>/scripts:/scripts:ro -v <repo>/.build/pkgs:/out ubuntu:
 
 `scripts/build-packages-linux.sh` does the whole chain: clone MicroHs at the pinned commit →
 build the self-hosted `mhs` → build `mcabal` → build `cpphs` → install `base` → install
-`array transformers mtl containers` (each with `-r` for dependencies) → emit the DB.
+`array transformers mtl containers random time HUnit QuickCheck hspec` (each with `-r` for
+dependencies) → emit the DB. The DB is kept between runs (mount `/db`), so re-runs only build
+what is missing.
 Gotchas encoded in the script: `-P<name>` must be joined (`-Pbase-0.16.6.0`, no space); flags
 must precede the `install` command and mcabal takes one package at a time; `curl` must be
-present (mcabal shells out to it for the Stackage snapshot); and `packageDbPath` in the
-generated `mhs.conf` must point at the DB, otherwise dependency packages fail with
-*"Module not found: Prelude"*.
+present (mcabal shells out to it for the Stackage snapshot); `packageDbPath` in the generated
+`mhs.conf` must point at the DB, otherwise dependency packages fail with *"Module not found:
+Prelude"*; and QuickCheck must come from git (`--git=…/nick8325/quickcheck.git`), since the
+Hackage release fails to compile.
 
 Produced (MicroHs 0.16.6.0, combinator file v8.4 — matching the bundle exactly):
 
-| package | size |
-| --- | --- |
-| `base-0.16.6.0.pkg` | 817,973 B (not shipped — base is embedded) |
-| `containers-0.8.pkg` | 480,013 B |
-| `transformers-0.6.2.0.pkg` | 279,699 B |
-| `mtl-2.3.2.pkg` | 259,214 B |
-| `ghc-compat-0.5.11.0.pkg` | 244,188 B (a dependency of containers) |
-| `array-mhs-0.5.8.0.pkg` | 221,157 B |
+| package | size | |
+| --- | --- | --- |
+| `containers-0.8.pkg` | 480,013 B | real upstream — `Data.Map`/`Set`/`Sequence` |
+| `QuickCheck-2.18.0.0.pkg` | 497,229 B | real upstream, built from **git** (see below) |
+| `random-mhs-1.3.2.2.pkg` | 340,079 B | MicroHs fork — `System.Random` |
+| `time-1.15.pkg` | 305,131 B | real upstream — `Data.Time` |
+| `transformers-0.6.2.0.pkg` | 279,699 B | real upstream |
+| `mtl-2.3.2.pkg` | 259,214 B | real upstream — `Control.Monad.State` etc. |
+| `ghc-compat-0.5.11.0.pkg` | 244,188 B | shim, injected into every package |
+| `array-mhs-0.5.8.0.pkg` | 221,157 B | MicroHs fork — `Data.Array` |
+| `splitmix-0.1.3.2.pkg` | 208,705 B | dependency of `random-mhs` |
+| `HUnit-1.6.2.0.pkg` | 208,218 B | real upstream — `Test.HUnit` |
+| `call-stack-0.4.0.pkg` | 181,099 B | dependency of `HUnit` |
+| `base-0.16.6.0.pkg` | 817,973 B | **not shipped** — base is embedded in the wasm |
 
-The 5 shipped packages plus 122 module maps total **1.42 MB** and live in `public/pkgs/`
-(`packages/*.pkg` + `<Module>.txt`), listed in `public/pkgs/index.json` (127 entries).
+The 11 shipped packages plus 166 module maps total **3.08 MB**, live in `public/pkgs/`
+(`packages/*.pkg` + `<Module>.txt`) and are listed in `public/pkgs/index.json` (177 entries).
+
+**Verified in Chrome** (each loads its package then runs):
+
+| package | evidence |
+| --- | --- |
+| `random` | `randomRIO (1,6)` → printed `random 1..6 in range: True` |
+| `time` | `getCurrentTime` → printed a real `UTCTime` day |
+| `HUnit` | `assertEqual "addition" (2+2) 4` → `HUnit assertion passed` |
+| `QuickCheck` | `quickCheckWith stdArgs { maxSuccess = 10 } …` → `+++ OK, passed 10 tests.` |
+
+Two caveats found here:
+
+- **QuickCheck needs `maxSuccess` lowered.** The default (100 tests) **traps the wasm**
+  (`Aborted(RuntimeError: unreachable)`) after ~74 tests; with `maxSuccess = 10` it passes
+  cleanly. Reasonable interpretation: a stack/heap limit in the interpreter under the test
+  loop, consistent with the worker stack-overflow finding above. 2.16.0.0 from Hackage would
+  not compile at all (`Test/QuickCheck/Exception.hs:59: kind error: cannot unify Type and
+  _a6 -> _a7`), so the build mirrors MicroHs's `Makefile.packages` and takes QuickCheck from
+  `git://github.com/nick8325/quickcheck.git` (2.18.0.0).
+- **`hspec` does not build.** `hspec-expectations-0.8.4` fails with
+  `Test/Hspec/Expectations.hs:65: not exported: HasCallStack` — the `HasCallStack` type from
+  `GHC.Stack` is not provided by `ghc-compat` (MicroHs has no implicit call-stack support).
+  `HUnit` and `QuickCheck` cover the testing use case; enabling hspec would mean adding a
+  stub `HasCallStack` to ghc-compat, i.e. patching a third-party shim.
+
+Note that boot cost grows with the package set: 177 files / 3.08 MB are fetched on every
+boot (≈12 s including compile for the QuickCheck run above). Loading packages on demand — the
+module maps and `import` lines already give the information needed — is the obvious next step
+if the set keeps growing.
 
 **Verified in Chrome** — the harness loads the DB (`loaded 127 package file(s)`), the runtime
 reports `Loading package /pkgs/packages/containers-0.8.pkg`, and a program using all three
@@ -310,6 +350,35 @@ A probe of the 15 previously-missing modules (`Data.Sequence`, `Data.IntMap`,
 `Data.Array.ST/IO`, `Data.Tree`, `Data.Graph`, `Data.IntSet`, `Data.Functor.Identity`) now
 reports **OK** for all of them. Adding a package is therefore: build its `.pkg`, drop it and
 its module maps in `public/pkgs/`, and add them to `index.json` — the wasm is untouched.
+
+#### Provenance — real packages vs MicroHs forks
+
+Not everything shipped is literally upstream, and the split is worth knowing:
+
+- **Real upstream Hackage packages, unmodified source:** `containers-0.8` (maintainer
+  `libraries@haskell.org`, home `github.com/haskell/containers`, BSD-3), `transformers-0.6.2.0`,
+  `mtl-2.3.2`. MicroCabal downloads
+  `https://hackage.haskell.org/package/<name>-<ver>.tar.gz` (`hackageSrcURL` in
+  `MicroCabal/Main.hs`) and compiles them; it patches only the **Cabal metadata**
+  (`mhsPatchDepends` rewrites `build-depends`) — there is no source-patching mechanism.
+- **MicroHs forks:** `array-mhs-0.5.8.0` — Hackage says verbatim *"This is a copy of the array
+  package adapted for MicroHs"* (`github.com/augustss/array-mhs`); `random-mhs` likewise.
+  MicroCabal hardcodes exactly these substitutions:
+  `mhsPackages = [("array", array-mhs 0.5.8.0), ("random", random-mhs 1.3.2.2)]`.
+  Same API, adapted source.
+- **A shim, not an implementation of what it names:** `ghc-compat-0.5.11.0` supplies `GHC.*`
+  and `Language.Haskell.TH.Syntax/Quote` — Template Haskell *types only*, no splicing — taken
+  from GHC's base and adapted. mcabal injects it into **every** third-party package.
+- **Not separate packages at all:** `bytestring`, `text`, `deepseq`, `hashable`, `directory`, …
+  are modules inside MicroHs's own `base`. MicroCabal carries pretend versions
+  (`base 4.19.1.0`, `bytestring 0.12.1.0`, `deepseq 1.4.4.0`, `hashable 1.0.0.0` — annotated
+  *"very rudimentary"*) so the dependency solver's constraints resolve against it.
+
+Consequences: `Data.Map`/`Set`/`Sequence`, `transformers` and `mtl` are the genuine libraries
+compiled by a different compiler, so semantics should match (performance is interpreter-class);
+`Data.Array` is an adapted copy; `hashable` is rudimentary, which can affect the performance —
+not the correctness — of hash-based structures; and the dependency edges recorded in our `.pkg`
+files differ slightly from Hackage's because of the rewriting above.
 
 
 
@@ -348,9 +417,10 @@ public/worker-runner.js      worker client with boot+run timeout (worker itself 
 public/haskell-worker.js     worker-side REPL driver + diagnostics
 public/canvhs-glue.js        Graphics.CanvHs JS glue (canvas, rAF, Web Audio)
 public/mhs/                  pinned bundle + VERSION.md
-public/pkgs/                  runtime package DB: packages/*.pkg + <Module>.txt
-                               + index.json (127 entries, 1.42 MB): containers, mtl,
-                               array, transformers, ghc-compat
+public/pkgs/                  runtime package DB (3.08 MB, 177 files): packages/*.pkg
+                               + <Module>.txt maps for containers, QuickCheck, random,
+                               time, transformers, mtl, ghc-compat, array, splitmix,
+                               HUnit, call-stack
 scripts/build-packages-linux.sh   builds those .pkg files (Docker/Ubuntu; see above)
 scripts/node-repl-run.js     Node REPL driver — reproduces the browser protocol headlessly
 scripts/node-test.js         headless suite (5/5 passing)
