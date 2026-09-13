@@ -251,6 +251,36 @@ function classify(text) {
   };
 }
 
+/**
+ * Backstop for misses the import pre-check cannot see (input typed straight into the
+ * REPL, or a module reached some way other than an `import` line): if the compiler
+ * reports "Module not found: X", append why X is not available rather than leave the
+ * bare message, which looks like a broken package.
+ */
+function explainNotFound(text) {
+  if (!text || !state.manifest) return text;
+  const seen = [];
+  const re = /Module not found:\s*([A-Z][A-Za-z0-9_.']*)/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const name = m[1];
+    if (seen.some((s) => s.module === name)) continue;
+    const found = window.mhsPackages.classifyModule(name, state.manifest);
+    if (found.kind === 'unavailable') {
+      seen.push({ module: name, reason: found.reason });
+    } else if (found.kind === 'unknown') {
+      seen.push({ module: name, reason: 'not bundled with this playground' });
+    } else if (found.kind === 'package') {
+      seen.push({
+        module: name,
+        reason: 'its package (' + found.pkg + ') is not loaded in this session',
+      });
+    }
+  }
+  const why = window.mhsPackages.explainMissing(seen, state.manifest);
+  return why ? text + '\n\n' + why : text;
+}
+
 /** Boot the Emscripten module; resolves when the first prompt is seen. */
 async function boot() {
   const collected = await collectPackages();
@@ -344,9 +374,22 @@ async function boot() {
 async function runHaskell(options) {
   const opts = options || {};
 
+  // Imports that can never be satisfied are reported as such, before anything is
+  // compiled: a bare "Module not found" reads like a broken package when it is
+  // really a documented limit of the playground.
+  const analysis = window.mhsPackages.analyzeImports(String(opts.source || ''), state.manifest);
+  if (analysis && analysis.missing.length) {
+    return {
+      output: null,
+      error: window.mhsPackages.explainMissing(analysis.missing, state.manifest),
+      exitCode: 1,
+      unavailable: analysis.missing,
+    };
+  }
+
   // Lazy loading: if the program imports modules from packages that are not in this
   // session, ask the caller to reload with them (the package path is fixed at boot).
-  const needed = window.mhsPackages.requiredFor(String(opts.source || ''), state.manifest);
+  const needed = analysis ? analysis.packages : null;
   if (needed && !hasPackages(needed)) {
     requestPackages(needed);
     return { output: null, error: null, exitCode: 0, needsPackages: needed, reload: true };
@@ -399,7 +442,7 @@ async function runHaskell(options) {
       cImport.error || cReload.error || (compileRaw.trim() ? compileRaw.trim() : null);
     return {
       output: res.output,
-      error: compileError || res.error || state.fatal,
+      error: explainNotFound(compileError || res.error || state.fatal),
       exitCode: state.exitCode == null ? 0 : state.exitCode,
       raw: state.raw,
     };
@@ -461,4 +504,5 @@ window.mhsRepl = {
   hasPackages,
   requestPackages,
   persistedPackages,
+  explainNotFound,
 };

@@ -1,0 +1,45 @@
+{
+  "comment": "Modules a user may reasonably expect but that this playground cannot provide. Used to turn 'Module not found' into an accurate explanation. Matched by prefix on the dot boundary, after checking the bundled packages and the embedded base, so anything those do provide (e.g. ghc-compat's GHC.Stack, Language.Haskell.TH.Syntax) is classified as available first.",
+  "unavailable": [
+    {
+      "prefix": "Language.Haskell.TH",
+      "reason": "Template Haskell is not supported by MicroHs (only its types, via ghc-compat)"
+    },
+    {
+      "prefix": "GHC",
+      "reason": "GHC internal modules are not exposed by MicroHs"
+    },
+    {
+      "prefix": "System.Posix",
+      "reason": "POSIX-only modules are not available in the browser"
+    },
+    {
+      "prefix": "System.Win32",
+      "reason": "Windows-only modules are not available in the browser"
+    },
+    {
+      "prefix": "Network",
+      "reason": "networking is not available in this playground"
+    },
+    {
+      "prefix": "Data.Vector",
+      "reason": "not bundled with this playground"
+    },
+    {
+      "prefix": "Data.Binary",
+      "reason": "not shipped: it compiles, but its reader (Data.Binary.Get / decode) loops forever in this build"
+    },
+    {
+      "prefix": "Control.Lens",
+      "reason": "not bundled with this playground"
+    },
+    {
+      "prefix": "Data.Aeson",
+      "reason": "not bundled with this playground"
+    },
+    {
+      "prefix": "Text.Megaparsec",
+      "reason": "not bundled with this playground"
+    }
+  ]
+}

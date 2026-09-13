@@ -100,19 +100,27 @@
    * Work out the package set this program needs; if the current worker was not
    * booted with them, discard it so the next one loads the enlarged set (the
    * package search path is fixed at boot).
+   * Also reports imports the playground cannot satisfy at all, so `run` can answer
+   * without spawning a worker just to fail with a misleading "Module not found".
    */
   async function resolvePackages(source) {
     const manifest = await window.mhsPackages.loadManifest();
-    if (!window.mhsPackages.isLazy(manifest)) return [];
-    const needed = window.mhsPackages.requiredFor(source, manifest) || [];
-    const missing = needed.filter((p) => loadedPackages.indexOf(p) === -1);
-    if (missing.length) {
+    if (!window.mhsPackages.isLazy(manifest)) {
+      return { packages: [], missing: [], manifest };
+    }
+    const analysis = window.mhsPackages.analyzeImports(source, manifest) || {
+      packages: [],
+      missing: [],
+    };
+    const needed = analysis.packages;
+    const absent = needed.filter((p) => loadedPackages.indexOf(p) === -1);
+    if (absent.length) {
       loadedPackages = Array.from(new Set(loadedPackages.concat(needed))).sort();
-      log('worker restarting to load: ' + missing.join(', '));
+      log('worker restarting to load: ' + absent.join(', '));
       teardown(null);
       bootError = null;
     }
-    return loadedPackages;
+    return { packages: loadedPackages, missing: analysis.missing, manifest };
   }
 
   /**
@@ -124,9 +132,17 @@
     const opts = options || {};
     const timeout = opts.timeout || DEFAULT_TIMEOUT;
 
-    return resolvePackages(source).then(
-      (packages) =>
-        new Promise((resolve, reject) => {
+    return resolvePackages(source).then((resolved) => {
+      if (resolved.missing.length) {
+        return {
+          output: null,
+          error: window.mhsPackages.explainMissing(resolved.missing, resolved.manifest),
+          exitCode: 1,
+          unavailable: resolved.missing,
+        };
+      }
+      const packages = resolved.packages;
+      return new Promise((resolve, reject) => {
           let settled = false;
           const settle = (fn, value) => {
             if (settled) return;
@@ -162,8 +178,8 @@
               });
             })
             .catch((err) => settle(reject, err));
-        }),
-    );
+      });
+    });
   }
 
   window.mhsWorker = {

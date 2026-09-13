@@ -4,8 +4,13 @@
 /**
  * Build public/pkgs/index.json — the lazy-loading manifest — from a package DB build.
  *
- *   { "modules":  { "Data.Map": "containers-0.8.pkg", ... },
- *     "packages": { "containers-0.8.pkg": ["array-mhs-0.5.8.0.pkg"], ... } }
+ *   { "modules":   { "Data.Map": "containers-0.8.pkg", ... },   // package-provided
+ *     "packages":  { "containers-0.8.pkg": ["array-mhs-0.5.8.0.pkg"], ... },
+ *     "embedded":  ["Data.List", ...],                          // provided by the wasm (base)
+ *     "unavailable": [ { prefix, reason } ] }                   // curated, see module-support.json
+ *
+ * `embedded` and `unavailable` let the runtime tell "needs a package" apart from
+ * "not available here", instead of both looking like a missing package.
  *
  * Inputs:
  *   --maps  <dir>   containing mhs-<version>/ with the module maps
@@ -13,6 +18,7 @@
  *   --deps  <file>  "<pkg file>|<dep name-version> <dep name-version> ..."
  *   --pkgs  <dir>   the shipped package dir (public/pkgs) — only packages present
  *                   there are listed; `base` is embedded in the wasm and excluded.
+ *   --support <file>  curated module-support.json (default: scripts/module-support.json)
  *
  * Usage:
  *   node scripts/build-manifest.js [--maps .build/db] [--deps .build/pkgs/deps.txt]
@@ -31,6 +37,7 @@ const arg = (name, dflt) => {
 const pkgDir = path.resolve(arg('--pkgs', path.join(root, 'public/pkgs')));
 const mapsDir = path.resolve(arg('--maps', path.join(root, '.build/db')));
 const depsFile = path.resolve(arg('--deps', path.join(root, '.build/pkgs/deps.txt')));
+const supportFile = path.resolve(arg('--support', path.join(root, 'scripts/module-support.json')));
 const version = arg('--version', '0.16.6.0');
 
 const mapRoot = path.join(mapsDir, 'mhs-' + version);
@@ -57,15 +64,19 @@ function walk(dir) {
   return out;
 }
 
-// module -> package
+// module -> package, plus the modules the wasm already provides (base)
 const modules = {};
+const embedded = [];
 for (const file of walk(mapRoot)) {
   if (!file.endsWith('.txt')) continue;
   const rel = path.relative(mapRoot, file);
   const mod = rel.replace(/\\/g, '/').replace(/\.txt$/, '').replace(/\//g, '.');
   const pkg = fs.readFileSync(file, 'utf8').trim();
-  if (pkg && shipped.has(pkg)) modules[mod] = pkg;
+  if (!pkg) continue;
+  if (shipped.has(pkg)) modules[mod] = pkg;
+  else if (pkg.startsWith('base-')) embedded.push(mod);
 }
+embedded.sort();
 
 // package -> dependencies (only shipped ones; base is embedded)
 const packages = {};
@@ -84,11 +95,23 @@ for (const line of fs.readFileSync(depsFile, 'utf8').split(/\r?\n/)) {
     .sort();
 }
 
+// curated: modules users expect but that cannot be provided here, with a reason
+let unavailable = [];
+try {
+  unavailable = JSON.parse(fs.readFileSync(supportFile, 'utf8')).unavailable || [];
+} catch (e) {
+  console.warn(`warning: no module-support.json at ${supportFile} (${e.message})`);
+}
+
 const out = path.join(pkgDir, 'index.json');
-fs.writeFileSync(out, JSON.stringify({ modules, packages }, null, 2) + '\n');
+fs.writeFileSync(
+  out,
+  JSON.stringify({ modules, packages, embedded, unavailable }, null, 2) + '\n',
+);
 
 console.log(
-  `manifest: ${Object.keys(modules).length} modules, ${Object.keys(packages).length} packages -> ${out}`,
+  `manifest: ${Object.keys(modules).length} modules, ${Object.keys(packages).length} packages, ` +
+    `${embedded.length} embedded, ${unavailable.length} unavailable rules -> ${out}`,
 );
 for (const p of Object.keys(packages).sort()) {
   console.log(`  ${p} -> ${packages[p].join(', ') || '(none)'}`);

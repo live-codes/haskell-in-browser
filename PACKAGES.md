@@ -1,0 +1,116 @@
+# Package support in the Haskell playground
+
+What a user can and cannot import, and why. Written against the GHC boot libraries, since those
+are what someone coming from `ghc` reasonably expects to be there without installing anything.
+
+Three things make this list stable to reason about:
+
+- the wasm embeds **`base`** (which in MicroHs is much larger than GHC's `base` — see below) plus
+  `canvhs`;
+- everything else is a MicroHs package, **lazily loaded** on first import — so shipping more
+  costs nothing at boot;
+- what ships is decided purely by which `.pkg` files are in `public/pkgs/packages/`.
+
+The runtime enforces this list: an import that cannot be satisfied is reported from
+`scripts/module-support.json` (via the manifest) with a reason, not as a bare
+`Module not found`. See "When you hit a missing module" at the end.
+
+## GHC boot libraries, one by one
+
+The authoritative list is [`ghc/ghc/libraries/`](https://github.com/ghc/ghc/tree/master/libraries).
+
+| boot library | here | notes |
+| --- | --- | --- |
+| `base` | **embedded** | MicroHs folds in `bytestring`, `text`, `deepseq`, `directory`, `stm`, `process`, plus `hashable` and `integer-logarithms` |
+| `array` | shipped | as `array-mhs-0.5.8.0`, MicroHs's fork |
+| `containers` | shipped | `Data.Map/Set/Sequence/IntMap/IntSet/Tree/Graph` |
+| `transformers`, `mtl` | shipped | `Control.Monad.State/Reader/Writer/Except/RWS` |
+| `exceptions` | shipped | |
+| `filepath`, `os-string` | shipped | |
+| `time` | shipped | |
+| `parsec` | shipped | `Text.Parsec`, `Text.ParserCombinators.Parsec`, `Text.Parsec.String` |
+| `pretty` | shipped | `Text.PrettyPrint` (+ `HughesPJ`) |
+| `xhtml` | shipped | `Text.XHtml`; needs `semigroups` |
+| `binary` | **built but withheld** | compiles, but `Data.Binary.Get` / `decode` loops forever — see below |
+| `bytestring`, `text`, `deepseq`, `directory`, `stm`, `process` | embedded | inside MicroHs's `base` (no download) |
+| `Cabal` | not applicable | a build tool |
+| `hpc`, `haskeline`, `terminfo` | not applicable | coverage tooling, interactive line editing, terminal database |
+| `template-haskell` | **impossible** | MicroHs has no Template Haskell. `ghc-compat` provides the *types* (`Language.Haskell.TH.Syntax`, `.Quote`), which do import |
+| `ghc-bignum`, `ghc-boot(-th)`, `ghc-compact`, `ghc-experimental`, `ghc-heap`, `ghc-internal`, `ghc-platform`, `ghc-prim`, `ghci`, `integer-gmp`, `libffi-clib`, `semaphore-compat`, `file-io` | not applicable | GHC implementation internals (MicroHs uses its own runtime and `imath` for bignums) |
+| `unix`, `Win32` | **impossible** | platform-specific; there is no POSIX or Win32 in a browser tab |
+| `process` | embedded, **non-functional** | `System.Process` imports, but a browser cannot spawn processes |
+| `directory` | embedded, **limited** | works against the compiler's in-memory FS only |
+
+Two notes on the "not applicable" rows: they are not gaps a user will notice, because they have
+no meaning outside GHC or outside a desktop OS. `Cabal`, `hpc`, `haskeline` and `terminfo` are
+build/terminal tooling; the `ghc-*` packages are the compiler's own internals. Shipping them
+would make them look available and then fail confusingly, which is worse than a clear "not
+available here".
+
+## Also shipped (not boot libraries, but commonly wanted)
+
+`random` (`System.Random`), `splitmix`, `unordered-containers`, `async`, and the test frameworks
+`HUnit`, `QuickCheck` and `hspec` (with `hspec-core`, `hspec-expectations`, `hspec-discover`,
+`quickcheck-io`, `call-stack`) and their dependencies (`ansi-terminal`, `ansi-terminal-types`,
+`colour`, `haskell-lexer`, `ghc-compat`).
+
+Every one of these is verified by *running* it, not just importing it — the evidence is in
+`FINDINGS.md`.
+
+## Worth adding next
+
+Candidates MicroHs is known to compile (they are in its
+[`Makefile.packages`](https://github.com/augustss/MicroHs/blob/master/Makefile.packages),
+*"These are the ones I know compile"*). Roughly ordered by usefulness in a learning playground
+or for competitive programming:
+
+| package | why |
+| --- | --- |
+| `fgl` | graph algorithms — the usual next step after `containers` |
+| `fingertree`, `heaps`, `psqueues` | data structures beyond `containers` |
+| `tagsoup` | HTML/XML parsing; pairs with `xhtml` |
+| `edit-distance`, `Diff` | string/diff algorithms |
+| `data-ordlist`, `dlist`, `split`, `monad-loops` | list and utility staples |
+| `prettyprinter` | modern alternative to `pretty` |
+| `numbers` | arbitrary-precision and other numeric types |
+| `parallel` | parallelism (bounded by the wasm runtime) |
+
+Their transitive dependencies come along automatically, so this is mostly "add the leaf".
+
+## Deliberately **not** supported
+
+| module(s) | reason |
+| --- | --- |
+| `Language.Haskell.TH` | no Template Haskell in MicroHs (only the types, via `ghc-compat`) |
+| `GHC.*` (other than what `ghc-compat` provides) | GHC internals are not exposed |
+| `System.Posix.*`, `System.Win32.*` | platform-specific |
+| `Network.*` | networking is not available here |
+| `Data.Binary` | built, compiles, but `Data.Binary.Get` / `decode` hangs (below) |
+| `Text.Megaparsec` | not in MicroHs's known-to-compile list |
+| `Data.Vector`, `Control.Lens`, `Data.Aeson` | not in MicroHs's known-to-compile list; `aeson` needs Template Haskell/generics |
+
+An earlier revision of `FINDINGS.md` claimed `vector` and `aeson` would build. They are not in
+MicroHs's verified list, so that was wrong — they are unverified, not merely unpackaged.
+
+### Why `binary` is built but not shipped
+
+It compiles and `Data.Binary.Put` works — `BL.length (runPut (putWord16be 258))` is `2` — but
+**`Data.Binary.Get` never returns**: both `runGet getWord16be (BL.pack [1,2])` and the round trip
+through `runPut` hang, `:main` times out, and the REPL stays stuck until the page is reloaded.
+
+A hang is the worst failure mode this playground has — there is no interrupt on the main thread,
+so it freezes the result iframe. An accurate "not available, here is why" is strictly better than
+a landmine, so the package is excluded from the shipped set. The `.pkg` still exists in
+`.build/db`, so this is a one-line decision to reverse, and it becomes worth reversing if the
+worker engine (which can kill a runaway) ever becomes reliable.
+
+## When you hit a missing module
+
+1. Check whether it is a MicroHs limitation or just unpackaged — MicroHs may simply not compile
+   it (that is the case for `megaparsec`, `vector`, `lens`, `aeson`).
+2. If it compiles and works, package it (see `public/pkgs/README.md`).
+3. If it compiles but misbehaves, or can never work, add a rule to
+   `scripts/module-support.json` and regenerate the manifest (`node scripts/build-manifest.js`),
+   so the failure is explained rather than mysterious.
+4. Run `node scripts/test-manifest.js` — it asserts the classification of the modules listed
+   above, so this document and the runtime cannot drift apart silently.

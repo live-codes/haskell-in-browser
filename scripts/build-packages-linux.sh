@@ -24,7 +24,10 @@ DB=${DB:-/db}
 # Packages to build. `base` is embedded in the browser bundle, so it is not shipped.
 # MicroCabal substitutes a few names (array -> array-mhs, random -> random-mhs) and
 # injects ghc-compat into every third-party package.
-PACKAGES=${PACKAGES:-"array transformers mtl containers random time unordered-containers async HUnit QuickCheck hspec"}
+# The tail of the list closes the GHC boot-library gap users would notice:
+# parsec (Text.Parsec), pretty (Text.PrettyPrint), binary (Data.Binary) and
+# xhtml (Text.XHtml, which needs semigroups).
+PACKAGES=${PACKAGES:-"array transformers mtl containers random time unordered-containers async HUnit QuickCheck hspec parsec semigroups pretty binary xhtml"}
 
 mkdir -p "$WORK" "$OUT" "$DB"
 # Clear stale artifacts, but keep an existing package DB so re-runs only build what
@@ -103,13 +106,16 @@ mcabal --install="$DB" -r --options=-D__GLASGOW_HASKELL__=990 install call-stack
 
 for p in $PACKAGES; do
   log "installing $p"
-  # MicroHs's own Makefile.packages builds QuickCheck from git rather than the
-  # Hackage release: QuickCheck 2.16.0.0 hits a kind error in mhs.
+  # mcabal takes all flags before the command, and a single package per invocation.
+  # Some packages only compile from git rather than their Hackage release, mirroring
+  # MicroHs's own Makefile.packages: QuickCheck 2.16.0.0 hits a kind error in mhs, and
+  # pretty/binary are built from git there too.
   gitopt=""
   case "$p" in
     QuickCheck) gitopt="--git=https://github.com/nick8325/quickcheck.git" ;;
+    pretty) gitopt="--git=https://github.com/haskell/pretty.git" ;;
+    binary) gitopt="--git=https://github.com/haskell/binary.git" ;;
   esac
-  # mcabal takes all flags before the command, and a single package per invocation.
   if mcabal --install="$DB" -r install $gitopt "$p"; then
     echo "ok: $p"
   else

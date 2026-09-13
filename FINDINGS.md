@@ -117,11 +117,17 @@ that should be errors are not reported**.
 `TypeFamilies`, Template Haskell and `DeriveGeneric` are the notable modern-GHC
 omissions; everything a typical introductory-to-intermediate course needs is present.
 
-### Library modules — 93/97 probed available
+### Library modules — the tutorial staples are available
+
+For the full picture — every GHC boot library and its status, what is worth adding next, and what
+can never work — see **[PACKAGES.md](PACKAGES.md)**. In short:
 
 `Data.Map`/`Data.Set`/`Data.Sequence`, `Control.Monad.State`, `Data.Array`, `System.Random`,
-`Data.Time`, `Test.HUnit` and `Test.QuickCheck` are now shipped (see "Bundle additions"), so
-the tutorial-staple gaps are closed.
+`Data.Time`, `Text.Parsec`, `Text.PrettyPrint`, `Test.HUnit` and `Test.QuickCheck` are all
+shipped (see "Bundle additions"), so the tutorial-staple gaps are closed. An earlier import
+probe of the 97 modules a course would touch scored 93/97; the three since added (parsec, pretty,
+xhtml) came from that missing set, so the practical gap is now `megaparsec`, `vector`, `lens`
+and `aeson`.
 
 Present: `Prelude`, `Data.List/Maybe/Char/Either/Tuple`, **`Data.Text` (+Lazy, IO,
 Encoding)**, **`Data.ByteString` (+Char8, Lazy, Short, Builder)**, `Data.Ratio`,
@@ -138,14 +144,33 @@ Originally missing, now **shipped as runtime packages** (verified importable):
 `Data.Tree`, `Data.Graph`), **`mtl`** (`Control.Monad.State/Reader/Writer/Except/RWS`) via
 `transformers`, **`array`** (`Data.Array`, `Data.Array.ST`, `Data.Array.IO`), **`random`**
 (`System.Random`), **`time`** (`Data.Time`), **`HUnit`** and **`QuickCheck`** — plus the
-`ghc-compat` shim and small dependencies (`call-stack`, `splitmix`). See "Bundle additions"
-below; this raised probed availability from 76/97 to **93/97**.
+`ghc-compat` shim and small dependencies (`call-stack`, `splitmix`, `unordered-containers`,
+`async`, `ansi-terminal`, `colour`, `haskell-lexer`, `os-string`, `exceptions`, `filepath`).
 
-Still missing (verified "Module not found"): `Text.Parsec`, `Text.Megaparsec`;
-`Data.Vector`, `Control.Lens`, `Data.Aeson`.
+Then **parsec**, **pretty** and **xhtml** closed the GHC boot-library gap that users would
+notice: `Text.Parsec` (+`Text.ParserCombinators.Parsec`, and the `Text.Parsec.String`
+convenience module), `Text.PrettyPrint` (+`HughesPJ`), `Text.XHtml` (needs `semigroups`).
+Verified in Chrome with real programs — a parser (`parse number "" "12345"` → `24690`),
+`render (text "hello" <+> int 42 <+> parens (char 'x'))` → `hello 42 (x)`, and
+`showHtml (paragraph << "hi" +++ ulist << […])` → the XHTML document string.
 
-Those all build with MicroHs (`Makefile.packages` lists parsec, heaps, fingertree, fgl, …), so
-they are the same packaging step rather than a compiler limitation.
+**`binary` is built but deliberately *not* shipped.** It compiles, and `Data.Binary.Put`
+works (`runPut (putWord16be 258)` is 2 bytes), but **`Data.Binary.Get` / `decode` loops
+forever** — `runGet getWord16be (BL.pack [1,2])` never returns. Since a hang freezes the result
+iframe with no way to interrupt (see "Limitations"), an accurate "not available" is strictly
+better than a landmine, so `import Data.Binary` now reports *why* it is withheld. Revisit if the
+worker engine (which can kill a runaway) becomes reliable.
+
+Still missing (verified "Module not found"): `Text.Megaparsec`; `Data.Vector`, `Control.Lens`,
+`Data.Aeson`.
+
+`megaparsec`, `vector` and `aeson` are **not** in MicroHs's known-to-compile list
+(`Makefile.packages`: *"These are the ones I know compile"*), so they are unverified rather than
+merely unpackaged — and `aeson` leans on Template Haskell/generics, which MicroHs does not
+support. An earlier revision of this file wrongly said `vector`/`aeson` would build. The same
+list covers plenty of non-boot libraries (tagsoup, optparse-applicative, comonad, data-default,
+parser-combinators, prettyprinter, heaps, fingertree, fgl, these, assoc, …), so useful breadth
+comes from there rather than from GHC's boot set.
 
 Also from the wiki's compliance table, even "present" modules are incomplete in places:
 `System.IO` lacks `hSeek`/`hTell`/`hIsEOF`/`hPrint`/`HandlePosn`/`SeekMode`;
@@ -216,9 +241,17 @@ bundle embeds `base` + `canvhs`; other packages are MicroHs packages loaded at r
 Everything is driven by a manifest, `public/pkgs/index.json`:
 
 ```json
-{ "modules":  { "Data.Map": "containers-0.8.pkg", ... },
-  "packages": { "containers-0.8.pkg": ["array-mhs-0.5.8.0.pkg"], ... } }
+{ "modules":     { "Data.Map": "containers-0.8.pkg", ... },
+  "packages":    { "containers-0.8.pkg": ["array-mhs-0.5.8.0.pkg"], ... },
+  "embedded":    ["Data.List", "Data.Text", ...],
+  "unavailable": [ { "prefix": "Data.Aeson", "reason": "not bundled with this playground" } ] }
 ```
+
+`embedded` lists what the wasm already provides (`base`, 196 modules), and `unavailable` is the
+curated set of modules users expect but that cannot be provided here. `embedded` is derived from
+the build (maps whose target is `base-*.pkg`); `unavailable` lives in
+`scripts/module-support.json` and is merged in by the generator. Together they are what makes an
+accurate *"not available here, because X"* possible — see §5.
 
 `public/packages.js` resolves the program's `import` lines to packages and closes over
 `packages` dependencies; only those `.pkg` files are fetched, and the `<Module>.txt` maps are
@@ -287,6 +320,46 @@ Finished in 2.0000 seconds
 2 examples, 0 failures
 ```
 
+### 5. Accurate "not available" messages
+
+A bare `Module not found: Data.Aeson` reads like a broken package, when it is really a documented
+limit of the playground. Every imported module is now classified:
+
+| kind | meaning |
+| --- | --- |
+| `package` | provided by a shipped `.pkg` — loaded lazily, as before |
+| `embedded` | provided by `base` inside the wasm — always present |
+| `unavailable` | cannot be provided here; carries a reason |
+| `unknown` | nothing known about it |
+
+`unavailable` matches by dot-boundary prefix and is checked **after** `package`/`embedded`, so a
+broad rule (`GHC`, `Language.Haskell.TH`) does not shadow what `ghc-compat` really does provide
+(`GHC.Stack`, `Language.Haskell.TH.Syntax`, `Language.Haskell.TH.Quote`).
+
+The check runs on the `import` lines **before anything is compiled**, so an unsatisfiable program
+is answered immediately — no boot, no compile — in both engines:
+
+```
+Not available in this playground:
+  Language.Haskell.TH — Template Haskell is not supported by MicroHs (only its types, via ghc-compat)
+  GHC.Prim — GHC internal modules are not exposed by MicroHs
+  System.Posix.Process — POSIX-only modules are not available in the browser
+
+This playground provides base (196 modules) plus 29 packages (281 modules), including
+Data.Map, Control.Monad.State, System.Random, Data.Time, Test.Hspec, Test.QuickCheck, ….
+```
+
+A backstop also annotates any `Module not found: X` that still reaches the compiler (a line typed
+straight into the REPL, or a module reached indirectly). Imports inside comments are stripped
+first, so a commented-out `import Data.Aeson` is not reported as missing. The curated rules live
+in `scripts/module-support.json` (merged into the manifest by the generator); the counts quoted
+in the message come from the manifest, so they cannot drift.
+
+Covered by `node scripts/test-manifest.js` — 37 checks (classification, prefix precedence,
+comment handling, reasons, message shape, and the parsec/pretty/xhtml closures). Verified in
+Chrome on the main-thread engine and the worker engine, plus the lazy-load/reload path from a
+cold `localStorage`.
+
 ### Building the package files — done
 
 Generating packages needs MicroHs to compile them. Two dead ends first:
@@ -302,40 +375,53 @@ Generating packages needs MicroHs to compile them. Two dead ends first:
 It worked immediately on Linux, in a container — no GHC needed, only a C compiler:
 
 ```
-docker run --rm -v <repo>/scripts:/scripts:ro -v <repo>/.build/pkgs:/out ubuntu:24.04 \
+docker run --rm -v <repo>/scripts:/scripts:ro -v <repo>/.build/pkgs:/out \
+  -v <repo>/.build/work:/build -v <repo>/.build/db:/db ubuntu:24.04 \
   bash -c "apt-get update -qq && apt-get install -y -qq build-essential git curl ca-certificates >/dev/null \
            && cp /scripts/build-packages-linux.sh /tmp/b.sh && WORK=/build OUT=/out DB=/db bash /tmp/b.sh"
 ```
 
+Mounting `/db` (and `/build`, which keeps the cloned sources and the already-built `bin/mhs`)
+makes re-runs incremental — only missing packages are built. To add packages without redoing the
+set, override `PACKAGES`, e.g. `PACKAGES='semigroups parsec pretty binary xhtml'`; the default
+is the full canonical list.
+
 `scripts/build-packages-linux.sh` does the whole chain: clone MicroHs at the pinned commit →
 build the self-hosted `mhs` → build `mcabal` → build `cpphs` → install `base` → install
-`array transformers mtl containers random time HUnit QuickCheck hspec` (each with `-r` for
-dependencies) → emit the DB. The DB is kept between runs (mount `/db`), so re-runs only build
-what is missing.
+`array transformers mtl containers random time unordered-containers async HUnit QuickCheck hspec
+parsec semigroups pretty binary xhtml` (each with `-r` for dependencies) → emit the DB. `base` is
+installed first and kept between runs, so re-runs only build what is missing.
 Gotchas encoded in the script: `-P<name>` and `-L<name>` must be **joined** to their value
 (a bare `-L` silently lists every installed package, which is how the first dependency dump
 came out empty); flags must precede the `install` command and mcabal takes one package at a
 time; `curl` must be present (mcabal shells out to it for the Stackage snapshot);
 `packageDbPath` in the generated `mhs.conf` must point at the DB, otherwise dependency packages
-fail with *"Module not found: Prelude"*; QuickCheck must come from git
-(`--git=…/nick8325/quickcheck.git`), since the Hackage release fails to compile; and
-`call-stack` needs `--options=-D__GLASGOW_HASKELL__=990` for hspec's benefit (see below).
+fail with *"Module not found: Prelude"*; `call-stack` needs
+`--options=-D__GLASGOW_HASKELL__=990` for hspec's benefit (see below); and three packages come
+from git rather than Hackage, mirroring MicroHs's own `Makefile.packages` — QuickCheck
+(2.16.0.0 hits a kind error), and `pretty`/`binary`.
 
 Produced (MicroHs 0.16.6.0, combinator file v8.4 — matching the bundle exactly):
 
-**25 packages ship** (`public/pkgs/packages/`), totalling 7.2 MB, plus the `index.json`
-manifest — 26 files. Nothing is fetched until a program imports something from them (see the
-lazy-loading section below). Grouped by purpose:
+**29 packages ship** (`public/pkgs/packages/`), totalling 8.0 MB, plus the `index.json`
+manifest — 30 files. Nothing is fetched until a program imports something from them (see the
+lazy-loading section above). Grouped by purpose:
 
 | group | packages |
 | --- | --- |
 | containers / data | `containers-0.8`, `array-mhs-0.5.8.0`, `unordered-containers-0.2.21` |
 | effects | `transformers-0.6.2.0`, `mtl-2.3.2`, `exceptions-0.10.11` |
+| parsers / printers | `parsec-3.1.18.0`, `pretty-1.1.3.6`, `xhtml-3000.2.2.1`, `semigroups-0.20.1` |
 | random / time | `random-mhs-1.3.2.2`, `splitmix-0.1.3.2`, `time-1.15` |
 | testing | `hspec-2.11.17`, `hspec-core-2.11.17`, `hspec-expectations-0.8.4`, `hspec-discover-2.11.17`, `QuickCheck-2.18.0.0`, `quickcheck-io-0.2.0`, `HUnit-1.6.2.0`, `call-stack-0.4.0` |
 | concurrency | `async-2.2.6` |
 | deps pulled in | `ansi-terminal-1.1.5`, `ansi-terminal-types-1.1.3`, `colour-2.3.7`, `filepath-1.5.5.0`, `os-string-2.0.10`, `haskell-lexer-1.2.1`, `ghc-compat-0.5.11.0` |
+| built but **not shipped** | `binary-0.8.9.2` — compiles, but `Data.Binary.Get` hangs; see above |
 | — | `base-0.16.6.0` — **not shipped**; base is embedded in the wasm |
+
+Adding a package is three steps: build it, copy the `.pkg` into `public/pkgs/packages/`, re-run
+`node scripts/build-manifest.js`. Shipping is decided purely by which `.pkg` files are present —
+which is how `binary` is excluded without touching the build.
 
 **Verified in Chrome** (each loads its package then runs):
 
@@ -345,6 +431,9 @@ lazy-loading section below). Grouped by purpose:
 | `time` | `getCurrentTime` → printed a real `UTCTime` day |
 | `HUnit` | `assertEqual "addition" (2+2) 4` → `HUnit assertion passed` |
 | `QuickCheck` | `quickCheckWith stdArgs { maxSuccess = 10 } …` → `+++ OK, passed 10 tests.` |
+| `parsec` | `parse number "" "12345"` with `number = read <$> many1 digit` → `24690` |
+| `pretty` | `render (text "hello" <+> int 42 <+> parens (char 'x'))` → `hello 42 (x)` |
+| `xhtml` | `showHtml (paragraph << "hi" +++ ulist << [li << "one", li << "two"])` → full XHTML document |
 
 Two caveats found here:
 
@@ -383,6 +472,19 @@ Two caveats found here:
   *"no PKG.cabal file"* with an empty package directory. (2) `async` is not pulled in by
   hspec's `-r` recursion reliably, so `unordered-containers` and `async` are now listed
   explicitly before `hspec`.
+
+- **`binary` compiles but its reader hangs.** Building it succeeds and `Data.Binary.Put` is
+  fine — `BL.length (runPut (putWord16be 258))` is `2` — but `Data.Binary.Get` never returns:
+  `runGet getWord16be (BL.pack [1,2])` and `runGet getWord16be (runPut (putWord16be 258))` both
+  hang, so `:main` times out and the REPL stays stuck until the page is reloaded. Since a hang
+  is the worst possible failure here (no interrupt), the package is **built but not shipped**,
+  and `import Data.Binary` reports the reason instead. `Put`-only uses will work if this is ever
+  revisited — most usefully once the worker engine can reliably kill a runaway.
+
+- **One boot timeout seen.** On a cold `localStorage` the very first `boot()` occasionally
+  exceeded its 20 s "first prompt" wait and the run failed with `Timed out waiting for first
+  prompt`; reloading and running again was fine, and every subsequent run booted in a few
+  seconds. If it recurs, the timeout (not the bundle) is the thing to raise.
 
 Boot cost no longer scales with the package set: nothing is fetched until a program imports
 something that lives in a package, and then only that package plus its MicroHs dependencies.
@@ -474,10 +576,12 @@ public/worker-runner.js        worker client with boot+run timeout (worker itsel
 public/haskell-worker.js       worker-side REPL driver + diagnostics
 public/canvhs-glue.js          Graphics.Canvhs JS glue (canvas, rAF, Web Audio)
 public/mhs/                    pinned bundle + VERSION.md
-public/pkgs/                   25 packages + index.json manifest (7.2 MB, 26 files)
+public/pkgs/                   29 packages + index.json manifest (8.0 MB, 30 files)
 scripts/build-packages-linux.sh   builds the .pkg files (Docker/Ubuntu; see above)
 scripts/build-manifest.js         generates public/pkgs/index.json from a build (Node —
                                   PowerShell's ConvertTo-Json mangles arrays)
+scripts/module-support.json       curated "cannot be provided here" rules (with reasons)
+scripts/test-manifest.js          asserts module classification (37 checks)
 scripts/dump-deps.sh              dumps package dependencies (`-L` joined!)
 scripts/get-async.sh              installs unordered-containers + async + hspec
 scripts/probe-stdin.js            demonstrates that program stdin is dead (EOF)
@@ -490,6 +594,7 @@ scripts/build-microhs-packages.ps1  Windows/mingw attempt (MSVC needed; see abov
 serve.js                       zero-dependency static server (node serve.js [port])
 canvhs-proof.png               screenshot: Graphics.Canvhs drawing in Chrome
 hello.hs                       sample program
+PACKAGES.md                    what can and cannot be imported, and why (read this first)
 ```
 
 Module inventory (embedded modules):
@@ -498,6 +603,7 @@ Package-provided modules are exercised through the browser harness, which loads 
 
 Reproduce:
 
+- package support: `node scripts/test-manifest.js` (see `PACKAGES.md`)
 - headless suite: `node scripts/node-test.js`
 - feature matrix: `node scripts/feature-probe.js`
 - browser flow: `node serve.js`, then open http://localhost:8123/
