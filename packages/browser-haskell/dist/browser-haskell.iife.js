@@ -1,4 +1,4 @@
-/*! @live-codes/browser-haskell v0.1.1 | MIT
+/*! @live-codes/browser-haskell v0.1.2 | MIT
  * Runs Haskell in the browser with MicroHs (Apache-2.0). */
 var BrowserHaskell=(()=>{var L=Object.defineProperty;var H=Object.getOwnPropertyDescriptor;var q=Object.getOwnPropertyNames;var $=Object.prototype.hasOwnProperty;var B=(s,t)=>{for(var e in t)L(s,e,{get:t[e],enumerable:!0})},G=(s,t,e,n)=>{if(t&&typeof t=="object"||typeof t=="function")for(let o of q(t))!$.call(s,o)&&o!==e&&L(s,o,{get:()=>t[o],enumerable:!(n=H(t,o))||n.enumerable});return s};var J=s=>G(L({},"__esModule",{value:!0}),s);var ut={};B(ut,{MicroHs:()=>b,createHaskell:()=>Z,default:()=>ct});var K=s=>s.endsWith("/")?s:s+"/";function Q(s){let t=String(s).replace(/\{-[\s\S]*?-\}/g," ").split(`
 `).map(a=>a.replace(/--.*$/,"")).join(`

@@ -1,4 +1,4 @@
-/*! @live-codes/browser-haskell v0.1.1 | MIT
+/*! @live-codes/browser-haskell v0.1.2 | MIT
  * Runs Haskell in the browser with MicroHs (Apache-2.0). */
 var Z=s=>s.endsWith("/")?s:s+"/";function z(s){let t=String(s).replace(/\{-[\s\S]*?-\}/g," ").split(`
 `).map(a=>a.replace(/--.*$/,"")).join(`
