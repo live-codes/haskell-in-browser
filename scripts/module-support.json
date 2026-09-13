@@ -1,5 +1,13 @@
 {
-  "comment": "Modules a user may reasonably expect but that this playground cannot provide. Used to turn 'Module not found' into an accurate explanation. Matched by prefix on the dot boundary, after checking the bundled packages and the embedded base, so anything those do provide (e.g. ghc-compat's GHC.Stack, Language.Haskell.TH.Syntax) is classified as available first.",
+  "comment": "Modules a user may reasonably expect but that this playground cannot provide. Used to turn 'Module not found' into an accurate explanation. Matched by prefix on the dot boundary, after checking the bundled packages and the embedded base, so anything those do provide (e.g. ghc-compat's GHC.Stack, Language.Haskell.TH.Syntax) is classified as available first. `embedded` lists the extra modules the wasm bundle itself provides: it embeds canvhs, which is never built as a .pkg, so it is absent from the build's module maps. Check candidates with `node scripts/node-repl-run.js --probe-imports <Module>,...`.",
+  "embedded": [
+    "Audio.AudHs.FFI",
+    "Audio.AudHs.Sound",
+    "Graphics.CanvHs",
+    "Graphics.CanvHs.Color",
+    "Graphics.CanvHs.Demo",
+    "Graphics.CanvHs.Picture"
+  ],
   "unavailable": [
     {
       "prefix": "Language.Haskell.TH",
@@ -40,6 +48,10 @@
     {
       "prefix": "Text.Megaparsec",
       "reason": "not bundled with this playground"
+    },
+    {
+      "prefix": "Audio.AudHs",
+      "reason": "the bundle ships canvhs's Audio.AudHs.Sound and Audio.AudHs.FFI, but not its umbrella module"
     }
   ]
 }

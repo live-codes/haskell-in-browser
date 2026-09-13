@@ -217,7 +217,7 @@ export function createPackageResolver(options) {
         .filter((mod) => manifest.modules[mod] !== undefined);
       lines.push('');
       lines.push(
-        'This playground provides base (' + base + ' modules) plus ' + pkgs + ' packages (' + count +
+        'This playground provides ' + base + ' built-in modules plus ' + pkgs + ' packages (' + count +
           ' modules), including ' + (examples.length ? examples.join(', ') + ', …' : 'see the manifest') + '.',
       );
     }

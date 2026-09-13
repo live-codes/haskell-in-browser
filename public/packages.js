@@ -149,9 +149,9 @@
     const pkgs = manifest && manifest.packages ? Object.keys(manifest.packages).length : 0;
     lines.push('');
     lines.push(
-      'This playground provides base (' +
+      'This playground provides ' +
         base +
-        ' modules) plus ' +
+        ' built-in modules plus ' +
         pkgs +
         ' packages (' +
         count +

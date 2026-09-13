@@ -40,7 +40,7 @@ and package-update runbook see [BUILD.md](BUILD.md); for what can be imported se
 | Scenario | Result |
 | --- | --- |
 | run `main` (`putStrLn` + `print`) | `hello from MicroHs` / `55`, `exitCode 0` |
-| eval expression (`map (+1) [1..5]`) | `[2,3,4,5,6]`, `exitCode 0` |
+| eval expression (`map (+1) [1..5]`) | `[2,3,4,5,6]`, `exitCode 0` (the source is compiled first, so the expression sees the module's definitions; with an empty editor the REPL is just a calculator) |
 | changed source re-run | picks up new code (after `:reload`) |
 | partial function (`head []`) | error: `*** Exception: error: "./Data/List.hs",389:11: head: empty list` |
 | canvhs graphics | **draws** (`display $ Color red $ SolidCircle 50` → red circle on canvas) |
@@ -262,11 +262,16 @@ Everything is driven by a manifest, `public/pkgs/index.json`:
   "unavailable": [ { "prefix": "Data.Aeson", "reason": "not bundled with this playground" } ] }
 ```
 
-`embedded` lists what the wasm already provides (`base`, 196 modules), and `unavailable` is the
-curated set of modules users expect but that cannot be provided here. `embedded` is derived from
-the build (maps whose target is `base-*.pkg`); `unavailable` lives in
-`scripts/module-support.json` and is merged in by the generator. Together they are what makes an
-accurate *"not available here, because X"* possible — see §5.
+`embedded` lists what the wasm already provides: `base` (196 modules, derived from the build — the
+maps whose target is `base-*.pkg`) plus a short curated list in `scripts/module-support.json` of
+modules the bundle also compiles in. The curated part is needed because the bundle embeds
+**canvhs**, which is never built as a `.pkg`, so it has no maps to derive from — without it
+`import Graphics.CanvHs` was reported as unavailable even though the compiler has it (the same
+reason `Audio.AudHs.Sound`/`Audio.AudHs.FFI` are listed, while canvhs's umbrella `Audio.AudHs` is
+not compiled in and gets an `unavailable` rule instead). `unavailable` is the curated set of
+modules users expect but that cannot be provided here. Both live in `scripts/module-support.json`
+and are merged in by the generator. Together they are what makes an accurate *"not available here,
+because X"* possible — see §5.
 
 `public/packages.js` resolves the program's `import` lines to packages and closes over
 `packages` dependencies; only those `.pkg` files are fetched, and the `<Module>.txt` maps are
@@ -390,7 +395,7 @@ limit of the playground. Every imported module is now classified:
 | kind | meaning |
 | --- | --- |
 | `package` | provided by a shipped `.pkg` — loaded lazily, as before |
-| `embedded` | provided by `base` inside the wasm — always present |
+| `embedded` | provided by the wasm itself (`base`, plus the bundle's canvhs) — always present |
 | `unavailable` | cannot be provided here; carries a reason |
 | `unknown` | nothing known about it |
 
@@ -407,7 +412,7 @@ Not available in this playground:
   GHC.Prim — GHC internal modules are not exposed by MicroHs
   System.Posix.Process — POSIX-only modules are not available in the browser
 
-This playground provides base (196 modules) plus 43 packages (358 modules), including
+This playground provides 202 built-in modules plus 43 packages (358 modules), including
 Data.Map, Control.Monad.State, System.Random, Data.Time, Test.Hspec, Test.QuickCheck, ….
 ```
 
@@ -637,19 +642,17 @@ build-and-release task (GHC + Emscripten + MicroHs bootstrap), not a spike.
 ## Layout
 
 ```
-public/index.html              harness UI (source, input, engine/mode/timeout, canvas, log)
+public/index.html              harness UI (demo picker, source, input, mode/expression, canvas, log)
 public/repl-runner.js          main-thread REPL driver (verified in Chrome)
-public/packages.js             manifest fetch + lazy package resolution (window & worker)
-public/worker-runner.js        worker client with boot+run timeout (worker itself unreliable)
-public/haskell-worker.js       worker-side REPL driver + diagnostics
+public/packages.js             manifest fetch + lazy package resolution
 public/canvhs-glue.js          Graphics.Canvhs JS glue (canvas, rAF, Web Audio)
 public/mhs/                    pinned bundle + VERSION.md
-public/pkgs/                   43 packages + index.json manifest (11.0 MB, 44 files)
+public/pkgs/                   43 packages + index.json manifest (11.0 MB, 45 files)
 scripts/build-packages-linux.sh   builds the .pkg files (Docker/Ubuntu; see above)
 scripts/build-manifest.js         generates public/pkgs/index.json from a build (Node —
                                   PowerShell's ConvertTo-Json mangles arrays)
 scripts/module-support.json       curated "cannot be provided here" rules (with reasons)
-scripts/test-manifest.js          asserts module classification (37 checks)
+scripts/test-manifest.js          asserts module classification (52 checks)
 scripts/dump-deps.sh              dumps package dependencies (`-L` joined!)
 scripts/get-async.sh              installs unordered-containers + async + hspec
 scripts/probe-stdin.js            demonstrates that program stdin is dead (EOF)
@@ -658,13 +661,16 @@ scripts/node-test.js              headless suite (5/5 passing)
 scripts/probe-runtime-loading.js  source path + mid-session package loading (4/4 passing)
 scripts/feature-probe.js          language-feature matrix (21/26)
 scripts/node-run.js               Node probe for the batch/argv paths (documents inertness)
-scripts/debug-packages.sh         one-off: how to read package metadata
 scripts/build-microhs-packages.ps1  Windows/mingw attempt (MSVC needed; see above)
-serve.js                       zero-dependency static server (node serve.js [port])
+serve.js                       zero-dependency static server (node serve.js [port] [root])
 canvhs-proof.png               screenshot: Graphics.Canvhs drawing in Chrome
 hello.hs                       sample program
 PACKAGES.md                    what can and cannot be imported, and why (read this first)
 ```
+
+`public/worker-runner.js` and `public/haskell-worker.js` — the worker engine explored in
+"Worker context is unreliable" above — have been removed. The harness and the npm package are
+main-thread only.
 
 Module inventory (embedded modules):
 `node scripts/node-repl-run.js --probe-imports Prelude,Data.Map,...`.

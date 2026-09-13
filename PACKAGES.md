@@ -55,6 +55,13 @@ available here".
 `quickcheck-io`, `call-stack`) and their dependencies (`ansi-terminal`, `ansi-terminal-types`,
 `colour`, `haskell-lexer`, `ghc-compat`).
 
+**`canvhs`** is embedded in the wasm bundle rather than shipped as a `.pkg`: HTML5 graphics
+(`Graphics.CanvHs` — a Gloss/Shine-style `Picture`/`Color` API, with `Graphics.CanvHs.Demo`'s
+`demo1`–`demo7`) and sound (`Audio.AudHs.Sound`, `Audio.AudHs.FFI`; canvhs's umbrella `Audio.AudHs`
+is not compiled into this build). Because it has no module maps to derive from, its modules are
+listed by hand under `embedded` in `scripts/module-support.json` — verify candidates with
+`node scripts/node-repl-run.js --probe-imports Graphics.CanvHs,...`.
+
 Then the batch this document used to list as "worth adding next", now all shipped: `fgl`
 (`Data.Graph.Inductive`, 28 modules), `fingertree`, `heaps`, `psqueues`, `tagsoup`,
 `edit-distance`, `Diff`, `data-ordlist`, `dlist`, `split`, `monad-loops`, `prettyprinter`

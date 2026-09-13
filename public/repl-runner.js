@@ -432,8 +432,18 @@ async function runHaskell(options) {
     let reloadOut = '';
 
     if (opts.mode === 'eval') {
-      sent.push(expr);
+      // An expression is evaluated in the scope of the loaded module, so compile
+      // the source first and the expression can use its definitions. With no
+      // source there is nothing to load: the REPL is used as a calculator.
+      if (source.trim()) {
+        state.module.FS.writeFile(MAIN_FILE, source);
+        importOut = await step('import Main', sent, 30000);
+        reloadOut = await step(':reload', sent, 30000);
+      }
+
+      baseline = promptCount();
       mark = state.raw.length;
+      sent.push(expr);
       await typeLine(expr);
       await waitUntil(() => promptCount() > baseline, 30000, 'expression');
     } else {

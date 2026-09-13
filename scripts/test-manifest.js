@@ -57,6 +57,12 @@ const cases = [
   ['Data.List', 'embedded'],
   ['Data.Text', 'embedded'],
   ['Data.ByteString', 'embedded'],
+  ['Data.Double', 'embedded'],
+  // the bundle embeds canvhs, which is never built as a .pkg, so these are absent
+  // from the build's module maps and listed in scripts/module-support.json
+  ['Graphics.CanvHs', 'embedded'],
+  ['Graphics.CanvHs.Picture', 'embedded'],
+  ['Audio.AudHs.Sound', 'embedded'],
   // provided by ghc-compat, so they must win over the broader GHC/TH rules
   ['GHC.Stack', 'package', 'ghc-compat-0.5.11.0.pkg'],
   ['Language.Haskell.TH.Syntax', 'package', 'ghc-compat-0.5.11.0.pkg'],
@@ -70,6 +76,8 @@ const cases = [
   ['GHC.Prim', 'unavailable'],
   ['System.Posix.Process', 'unavailable'],
   ['Network.Socket', 'unavailable'],
+  // the bundle ships canvhs's Sound/FFI, but not its umbrella module
+  ['Audio.AudHs', 'unavailable'],
   // nothing known about it
   ['No.Such.Module', 'unknown'],
   // built, then deliberately withheld: compiles but its reader hangs

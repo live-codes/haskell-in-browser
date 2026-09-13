@@ -5,7 +5,7 @@
  *
  * Validates the {output, error, exitCode} contract (compile+run, stdin, exit
  * codes, errors, expression eval) without a browser. The same Module
- * configuration is later mirrored in haskell-worker.js for the browser.
+ * configuration is used by the browser runner, public/repl-runner.js.
  *
  * Node-specific caveats (do not apply in the browser):
  *  - The glue's `var Module = typeof Module != "undefined" ? Module : {}` is

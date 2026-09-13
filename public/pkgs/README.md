@@ -22,10 +22,12 @@ they are not stored here.
   "unavailable": [ { "prefix": "Data.Aeson", "reason": "not bundled with this playground" } ] }
 ```
 
-`embedded` lists the modules the wasm already provides (`base`), and `unavailable` is the
-curated set of modules users expect but that cannot be provided here. `packages.js` uses them to
-answer an import it cannot satisfy with an accurate explanation instead of a bare
-`Module not found`; the rules are edited in `../../scripts/module-support.json`, not here.
+`embedded` lists the modules the wasm already provides: `base`, plus the extra modules the bundle
+compiles in (canvhs, which is never built as a `.pkg` so it has no maps to derive from — hence the
+hand-written list in `../../scripts/module-support.json`). `unavailable` is the curated set of
+modules users expect but that cannot be provided here. `packages.js` uses them to answer an import
+it cannot satisfy with an accurate explanation instead of a bare `Module not found`; the rules are
+edited in `../../scripts/module-support.json`, not here.
 
 The package search path is declared when the compiler boots (`-a/pkgs`) and packages are
 written into the virtual FS on demand, so a program importing a module from a package that is

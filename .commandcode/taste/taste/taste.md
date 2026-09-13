@@ -22,3 +22,9 @@
 - Names/adds npm packages scoped under the project's org namespace (e.g. `@live-codes/...`) rather than a bare unscoped name. Confidence: 0.55
 - Expects the heavy assets a library depends on (wasm binaries, data files, prebuilt packages) to be consumer-configurable at initialisation — e.g. a `baseUrl`/asset-URL option plus an import-map-style overrides map — rather than baked-in hard-coded paths. Confidence: 0.6
 - Scrutinises spec/compliance claims made in documentation (e.g. a README's "Haskell 2010 subset") and asks how far they actually hold, rather than accepting them at face value; wants claims backed by evidence. Confidence: 0.5
+- Wants README/project docs to be complete and honest: an overview of what the project is, its features, its explicit limitations, how to use the package (npm install/usage), and a demo — limitations stated rather than glossed over. Confidence: 0.55
+- Prefers the MIT license, credited to his own name (Hatem Hosny). Confidence: 0.6
+- Prefers unstable/unreliable code paths (e.g. a web-worker execution engine known to be flaky) removed from the shipped/demo surface entirely rather than exposed as selectable options or documented caveats. Confidence: 0.55
+- Wants demo/example pages kept minimal and focused on the single supported path — strips engine selectors, mode buttons, timeout knobs and similar secondary controls instead of leaving them in. Confidence: 0.5
+- Wants public-facing demo pages to link back to the project's source repository on GitHub. Confidence: 0.45
+- Wants demo/harness pages to ship with built-in, ready-to-run example programs that each showcase a distinct capability (e.g. reading stdin, importing modules, canvas/graphics) — selectable from the UI rather than a single default snippet. Confidence: 0.5

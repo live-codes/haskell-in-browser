@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MicroHs spike — REPL-driven Haskell</title>
+    <title>Browser Haskell</title>
     <style>
       :root {
         color-scheme: dark;
@@ -23,12 +23,20 @@
         border-bottom: 1px solid #2a2f37;
         display: flex;
         gap: 12px;
-        align-items: center;
+        align-items: baseline;
       }
       header h1 {
         font-size: 14px;
         margin: 0;
         font-weight: 600;
+      }
+      header a {
+        color: #8b95a5;
+        text-decoration: none;
+      }
+      header a:hover {
+        color: #e6e6e6;
+        text-decoration: underline;
       }
       #status {
         margin-left: auto;
@@ -99,8 +107,7 @@
       button.ghost {
         background: #1f2937;
       }
-      select,
-      input[type="number"] {
+      select {
         background: #0d0f12;
         color: #e6e6e6;
         border: 1px solid #2a2f37;
@@ -130,6 +137,13 @@
       #meta {
         color: #8b95a5;
       }
+      #demo {
+        flex: 1;
+      }
+      .note {
+        color: #8b95a5;
+        font-size: 11px;
+      }
       canvas {
         width: 100%;
         height: 120px;
@@ -150,41 +164,36 @@
   </head>
   <body>
     <header>
-      <h1>MicroHs spike — REPL-driven Haskell</h1>
-      <span id="status">booting…</span>
+      <h1>Browser Haskell</h1>
+      <a
+        href="https://github.com/live-codes/browser-haskell"
+        target="_blank"
+        rel="noreferrer"
+        >github.com/live-codes/browser-haskell</a
+      >
+      <span id="status">ready</span>
     </header>
 
     <main>
       <section>
+        <div class="row">
+          <label for="demo">Demo</label>
+          <select id="demo"></select>
+        </div>
+        <div id="demoNote" class="note"></div>
+
         <label for="source">Haskell source (module Main with main)</label>
-        <textarea id="source" spellcheck="false">
-module Main where
+        <textarea id="source" spellcheck="false"></textarea>
 
-main :: IO ()
-main = do
-  putStrLn "hello from MicroHs"
-  print (sum [1 .. 10])</textarea
-        >
-
-        <label for="stdin"
-          >input — exposed as lcInput / lcInputLines / lcInputWords (getLine
-          cannot work: this build cannot read stdin)</label
-        >
+        <label for="stdin">input</label>
         <textarea id="stdin" spellcheck="false"></textarea>
 
         <div class="row">
-          <label for="engine">Engine</label>
-          <select id="engine">
-            <option value="main">main thread (canvhs)</option>
-            <option value="worker">worker (timeout-safe)</option>
-          </select>
           <label for="mode">Mode</label>
           <select id="mode">
             <option value="run">run main</option>
             <option value="eval">eval expression</option>
           </select>
-          <label for="timeout">Timeout</label>
-          <input id="timeout" type="number" value="20000" style="width: 90px" />
         </div>
 
         <div class="row">
@@ -194,7 +203,6 @@ main = do
 
         <div class="row">
           <button id="run">Run</button>
-          <button id="kill" class="ghost">Kill worker</button>
           <button id="reload" class="ghost">Reload page</button>
           <span id="meta"></span>
         </div>
@@ -221,7 +229,6 @@ main = do
     <script src="canvhs-glue.js"></script>
     <script src="packages.js"></script>
     <script src="repl-runner.js"></script>
-    <script src="worker-runner.js"></script>
     <script>
       const $ = (id) => document.getElementById(id);
       const status = $("status");
@@ -239,45 +246,26 @@ main = do
       }
 
       mhsRepl.on("log", log);
-      mhsRepl.on("exit", (code) => log("[main-thread REPL exited] " + code));
-      mhsWorker.onLog(log);
-
-      async function runWithWorker(mode, expr, timeout) {
-        return mhsWorker.run($("source").value, {
-          mode,
-          expr,
-          timeout,
-          input: $("stdin").value,
-        });
-      }
-
-      // The main-thread REPL also gives canvhs a DOM canvas, but a runaway
-      // program blocks the tab (there is no way to interrupt it).
-      async function runWithMain(mode, expr) {
-        if (!mhsRepl.state.ready) await mhsRepl.boot();
-        return mhsRepl.runHaskell({
-          source: $("source").value,
-          mode,
-          expr,
-          input: $("stdin").value,
-        });
-      }
+      mhsRepl.on("exit", (code) => log("[REPL exited] " + code));
 
       async function run() {
-        const engine = $("engine").value;
         const mode = $("mode").value;
         const expr = $("expr").value;
-        const timeout = Number($("timeout").value) || 20000;
 
         $("run").disabled = true;
         setStatus("running…");
         output.textContent = "(running)";
         const t0 = performance.now();
         try {
-          const result =
-            engine === "worker"
-              ? await runWithWorker(mode, expr, timeout)
-              : await runWithMain(mode, expr);
+          // Booting loads the wasm; a runaway program blocks the tab afterwards,
+          // because the REPL runs on this thread and cannot be interrupted.
+          if (!mhsRepl.state.ready) await mhsRepl.boot();
+          const result = await mhsRepl.runHaskell({
+            source: $("source").value,
+            mode,
+            expr,
+            input: $("stdin").value,
+          });
 
           const ms = Math.round(performance.now() - t0);
           const parts = [];
@@ -302,12 +290,6 @@ main = do
 
       $("run").addEventListener("click", run);
       $("reload").addEventListener("click", () => location.reload());
-      $("kill").addEventListener("click", () => {
-        mhsWorker
-          .restart()
-          .then(() => log("worker restarted"))
-          .catch((err) => log("worker restart failed: " + err.message));
-      });
       $("send").addEventListener("click", async () => {
         const line = $("manual").value;
         if (!line) return;
@@ -319,14 +301,214 @@ main = do
         if (e.key === "Enter") $("send").click();
       });
 
+      // Each demo fills the whole form: source, input, mode and expression.
+      const DEMOS = [
+        {
+          name: "Hello world",
+          note: "The basics: a Main module, IO actions and a lazy list.",
+          source: `module Main where
+
+main :: IO ()
+main = do
+  putStrLn "hello from Browser Haskell"
+  print (sum [1 .. 10])`,
+        },
+        {
+          name: "Input (stdin)",
+          note: "Programs read the input box through the bindings the harness appends to your module. The demo's first line is numeric.",
+          stdin: "3 1 4 1 5 9\nhello world\nHaskell in the browser",
+          source: `module Main where
+
+-- lcInput, lcInputLines and lcInputWords are appended to your module:
+-- this build cannot read stdin at the system level.
+main :: IO ()
+main = do
+  putStrLn ("input: " ++ show (length lcInputLines) ++ " lines, "
+            ++ show (length lcInputWords) ++ " words")
+  case lcInputLines of
+    [] -> putStrLn "no input given"
+    (first : rest) -> do
+      let nums = map read (words first) :: [Int]
+      putStrLn ("first line as numbers: " ++ show nums)
+      putStrLn ("sum:                   " ++ show (sum nums))
+      putStrLn "remaining lines, reversed:"
+      mapM_ (putStrLn . reverse) rest`,
+        },
+        {
+          name: "Modules: Data.Map word count",
+          note: "Imports containers — watch the log pane fetch the package on demand.",
+          stdin: "the quick brown fox jumps over the lazy dog the fox",
+          source: `module Main where
+
+import qualified Data.Map.Strict as Map
+import Data.List (sortBy)
+import Data.Ord (comparing)
+
+showCount :: (String, Int) -> String
+showCount (w, n) = show n ++ "  " ++ w
+
+main :: IO ()
+main = do
+  let counts = Map.fromListWith (+) [(w, 1 :: Int) | w <- words lcInput]
+      ranked = sortBy (flip (comparing snd)) (Map.toList counts)
+  mapM_ (putStrLn . showCount) ranked`,
+        },
+        {
+          name: "Modules: State monad",
+          note: "Imports mtl (Control.Monad.State) — a stack machine threaded through State.",
+          source: `module Main where
+
+import Control.Monad.State
+
+push :: Int -> State [Int] ()
+push x = modify (x :)
+
+pop :: State [Int] (Maybe Int)
+pop = do
+  stack <- get
+  case stack of
+    []     -> pure Nothing
+    (x:xs) -> put xs >> pure (Just x)
+
+main :: IO ()
+main = do
+  let (popped, left) = runState (mapM (const pop) [(), (), ()]) [1, 2, 3, 4]
+  putStrLn ("popped: " ++ show popped)
+  putStrLn ("left:   " ++ show left)
+  putStrLn ("push 7, push 8, pop -> " ++ show (execState (push 7 >> push 8 >> pop) []))`,
+        },
+        {
+          name: "Numbers: random",
+          note: "System.Random from the random package — randomRIO plus reproducible seeded sequences.",
+          source: `module Main where
+
+import System.Random
+
+main :: IO ()
+main = do
+  dice <- sequence [randomRIO (1, 6) :: IO Int | _ <- [1 .. 5]]
+  putStrLn ("five dice: " ++ show dice)
+  putStrLn ("total:     " ++ show (sum dice))
+
+  -- a fixed seed gives the same sequence every time
+  let seeded = take 5 (randomRs (1, 100) (mkStdGen 42) :: [Int])
+  putStrLn ("seed 42:   " ++ show seeded)
+  putStrLn ("again:     " ++ show (take 5 (randomRs (1, 100) (mkStdGen 42) :: [Int])))`,
+        },
+        {
+          name: "Testing: QuickCheck",
+          note: "Properties over random inputs. QuickCheck defaults to 100 tests, which overflows the wasm stack around test 74 — hence maxSuccess = 10.",
+          source: `module Main where
+
+import Data.List (sort)
+import Test.QuickCheck
+
+main :: IO ()
+main = do
+  quickCheckWith stdArgs { maxSuccess = 10 } propReverseTwice
+  quickCheckWith stdArgs { maxSuccess = 10 } propSortIdempotent
+
+propReverseTwice :: [Int] -> Bool
+propReverseTwice xs = reverse (reverse xs) == xs
+
+propSortIdempotent :: [Int] -> Bool
+propSortIdempotent xs = sort (sort xs) == sort xs`,
+        },
+        {
+          name: "Canvas: shapes",
+          note: "Graphics.CanvHs — shapes, colours and transforms drawn on the canvas. Origin is the centre, y grows upward.",
+          source: `module Main where
+
+import Graphics.CanvHs
+
+main :: IO ()
+main = display $ Pictures
+  [ Color darkGray (SolidRectangle 2000 2000)
+  , Color blue     (SolidRectangle 280 120)
+  , Color orange   (Circle 120)
+  , Color red      (SolidCircle 45)
+  , Translate 150 (-110) (Color lime (Polygon [(-45, -45), (45, -45), (0, 45)]))
+  , Translate (-150) 110 (Color white (Text "canvhs"))
+  ]`,
+        },
+        {
+          name: "Canvas: computed scene",
+          note: "The picture is built in Haskell: 12 rotated petals with alternating colours.",
+          source: `module Main where
+
+import Graphics.CanvHs
+
+main :: IO ()
+main = display $ Pictures
+  [ Color (RGBA 0.09 0.10 0.13 1) (SolidRectangle 2000 2000)
+  , Pictures petals
+  ]
+
+petals :: [Picture]
+petals =
+  [ Rotate (fromIntegral i * 30) $
+      Translate 0 95 $
+        Color (if even i then pink else purple) (SolidCircle 45)
+  | i <- [0 .. 11]
+  ]`,
+        },
+        {
+          name: "Expression evaluation",
+          note: "Eval mode ignores main and evaluates the expression box against the module.",
+          mode: "eval",
+          expr: "map (+1) (take 5 squares)",
+          source: `module Main where
+
+-- In eval mode the module only needs the definitions the expression
+-- uses; main is not run.
+squares :: [Int]
+squares = [n * n | n <- [1 .. 10]]`,
+        },
+        {
+          name: "Diagnostics: a failing program",
+          note: "Errors are reported separately from output, with MicroHs source positions.",
+          source: `module Main where
+
+main :: IO ()
+main = do
+  putStrLn "about to hit a runtime error"
+  print (head ([] :: [Int]))`,
+        },
+      ];
+
+      const demoSelect = $("demo");
+
+      function loadDemo(index) {
+        const demo = DEMOS[index];
+        if (!demo) return;
+        $("source").value = demo.source;
+        $("stdin").value = demo.stdin || "";
+        $("mode").value = demo.mode || "run";
+        $("expr").value = demo.expr || "map (+1) [1..5]";
+        $("demoNote").textContent = demo.note || "";
+        output.textContent = "(not run yet)";
+        $("meta").textContent = "";
+        setStatus("ready", "");
+      }
+
+      DEMOS.forEach((demo, i) => {
+        const opt = document.createElement("option");
+        opt.value = String(i);
+        opt.textContent = demo.name;
+        demoSelect.appendChild(opt);
+      });
+      demoSelect.addEventListener("change", () =>
+        loadDemo(Number(demoSelect.value)),
+      );
+      loadDemo(0);
+
       // Expose the raw transcript for debugging.
       window.dumpRaw = () => {
         console.log(mhsRepl.getRaw());
         return mhsRepl.getRaw();
       };
 
-      setStatus("ready", "ok");
-      log("page ready — the worker boots on the first Run");
+      log("page ready — the REPL boots on the first Run");
     </script>
   </body>
 </html>

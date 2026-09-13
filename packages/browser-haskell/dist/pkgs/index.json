@@ -497,6 +497,8 @@
     "xhtml-3000.2.2.1.pkg": []
   },
   "embedded": [
+    "Audio.AudHs.FFI",
+    "Audio.AudHs.Sound",
     "Control.Applicative",
     "Control.Arrow",
     "Control.Category",
@@ -649,6 +651,10 @@
     "Foreign.StablePtr",
     "Foreign.Storable",
     "GHC.Generics",
+    "Graphics.CanvHs",
+    "Graphics.CanvHs.Color",
+    "Graphics.CanvHs.Demo",
+    "Graphics.CanvHs.Picture",
     "Math.NumberTheory.Logarithms",
     "Mhs.Arr",
     "Mhs.Array",
@@ -734,6 +740,10 @@
     {
       "prefix": "Text.Megaparsec",
       "reason": "not bundled with this playground"
+    },
+    {
+      "prefix": "Audio.AudHs",
+      "reason": "the bundle ships canvhs's Audio.AudHs.Sound and Audio.AudHs.FFI, but not its umbrella module"
     }
   ]
 }

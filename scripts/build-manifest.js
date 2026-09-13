@@ -76,7 +76,6 @@ for (const file of walk(mapRoot)) {
   if (shipped.has(pkg)) modules[mod] = pkg;
   else if (pkg.startsWith('base-')) embedded.push(mod);
 }
-embedded.sort();
 
 // package -> dependencies (only shipped ones; base is embedded)
 const packages = {};
@@ -95,13 +94,20 @@ for (const line of fs.readFileSync(depsFile, 'utf8').split(/\r?\n/)) {
     .sort();
 }
 
-// curated: modules users expect but that cannot be provided here, with a reason
-let unavailable = [];
+// curated: modules the wasm bundle provides beyond the build's maps (the bundle
+// embeds canvhs, which is never built as a .pkg), and the modules users expect
+// but that cannot be provided here, with a reason.
+let support = {};
 try {
-  unavailable = JSON.parse(fs.readFileSync(supportFile, 'utf8')).unavailable || [];
+  support = JSON.parse(fs.readFileSync(supportFile, 'utf8'));
 } catch (e) {
   console.warn(`warning: no module-support.json at ${supportFile} (${e.message})`);
 }
+for (const mod of support.embedded || []) {
+  if (!modules[mod] && !embedded.includes(mod)) embedded.push(mod);
+}
+embedded.sort();
+const unavailable = support.unavailable || [];
 
 const out = path.join(pkgDir, 'index.json');
 fs.writeFileSync(
