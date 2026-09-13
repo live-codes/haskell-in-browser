@@ -1,0 +1,7 @@
+# Build caches — derived, regenerate with the Docker package build (see BUILD.md).
+# Never commit these: the package DB contains nested checkouts, which git records as
+# submodule entries without any .gitmodules and which break a plain `git clone`.
+.build/
+
+# npm dependencies
+node_modules/
