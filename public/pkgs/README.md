@@ -37,6 +37,9 @@ filtered out of the manifest.
 
 ## Adding a package
 
+The full runbook — including the incremental Docker command that rebuilds only the new package,
+and what to check afterwards — is in [`../../BUILD.md`](../../BUILD.md). In short:
+
 1. Build it (see `../../scripts/build-packages-linux.sh`) — it must come from the same MicroHs
    version as the bundle, or its packages will not deserialize. Re-runs are incremental if the
    build DB (`.build/db`) and work dir (`.build/work`) are mounted.

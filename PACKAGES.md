@@ -13,7 +13,8 @@ Three things make this list stable to reason about:
 
 The runtime enforces this list: an import that cannot be satisfied is reported from
 `scripts/module-support.json` (via the manifest) with a reason, not as a bare
-`Module not found`. See "When you hit a missing module" at the end.
+`Module not found`. See "When you hit a missing module" at the end, and
+[BUILD.md](BUILD.md) for the mechanics of actually building and shipping a package.
 
 ## GHC boot libraries, one by one
 
@@ -100,15 +101,20 @@ through `runPut` hang, `:main` times out, and the REPL stays stuck until the pag
 
 A hang is the worst failure mode this playground has — there is no interrupt on the main thread,
 so it freezes the result iframe. An accurate "not available, here is why" is strictly better than
-a landmine, so the package is excluded from the shipped set. The `.pkg` still exists in
-`.build/db`, so this is a one-line decision to reverse, and it becomes worth reversing if the
-worker engine (which can kill a runaway) ever becomes reliable.
+a landmine, so the package is excluded from the shipped set *and* from the build's default
+`PACKAGES`. Its `.pkg` is still in the committed build DB, and `PACKAGES='binary'` rebuilds it
+(there is a pinned case in the script), so this stays a small decision to reverse — and it becomes
+worth reversing if the worker engine (which can kill a runaway) ever becomes reliable.
+
+See [BUILD.md](BUILD.md) for the packaging mechanics, including why a package may rebuild on every
+run.
 
 ## When you hit a missing module
 
 1. Check whether it is a MicroHs limitation or just unpackaged — MicroHs may simply not compile
    it (that is the case for `megaparsec`, `vector`, `lens`, `aeson`).
-2. If it compiles and works, package it (see `public/pkgs/README.md`).
+2. If it compiles and works, package it — [BUILD.md](BUILD.md) has the step-by-step, including the
+   incremental Docker run that rebuilds only the new package.
 3. If it compiles but misbehaves, or can never work, add a rule to
    `scripts/module-support.json` and regenerate the manifest (`node scripts/build-manifest.js`),
    so the failure is explained rather than mysterious.

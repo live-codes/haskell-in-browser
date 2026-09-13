@@ -12,6 +12,10 @@ Pinned artifacts: MicroHs commit `455782164e75998b140d869c1b7cdde0c8a21508`
 | `mhs-embed.js` | 95,273 | `B8E57DCAD9D060F7B4A80654008C08EF1ED4FEF9CB5C95BC6201FEECC2319770` |
 | `mhs-embed.wasm` | 1,875,521 | `89131E819C615F96A964A78958A6BB5C3A9D42B6C95CDF306F143231C0270919` |
 
+This file is the **spike log** — what was tried, what worked, and what was wrong. For the build
+and package-update runbook see [BUILD.md](BUILD.md); for what can be imported see
+[PACKAGES.md](PACKAGES.md); [README.md](README.md) is the entry point.
+
 ## Corrections to the first pass (important)
 
 1. **Do NOT patch `noExitRuntime`.** I first changed `var noExitRuntime=true;` to
@@ -255,8 +259,8 @@ accurate *"not available here, because X"* possible — see §5.
 
 `public/packages.js` resolves the program's `import` lines to packages and closes over
 `packages` dependencies; only those `.pkg` files are fetched, and the `<Module>.txt` maps are
-**synthesised from the manifest** rather than shipped as 166 tiny files. A legacy flat file
-list is still understood (and simply disables lazy loading).
+**synthesised from the manifest** rather than shipped as one tiny file per module. A legacy flat
+file list is still understood (and simply disables lazy loading).
 
 Because the package path is fixed at boot, a program needing a package that is not loaded
 causes a reload: the runner returns `{reload: true, needsPackages: […]}` with nothing executed,
@@ -276,8 +280,9 @@ unreliable for the reason noted above.
 | `import Test.QuickCheck` (and use it) | 9 — QuickCheck, random-mhs, splitmix, time, mtl, transformers, containers, array-mhs, ghc-compat |
 
 each producing the right output, and `persistedPackages()` matching `state.loaded`. A
-Prelude-only run now boots in ~4.2 s against ~12.5 s when every package was preloaded, and
-`public/pkgs/` is **12 files (11 `.pkg` + manifest)** instead of 178.
+Prelude-only run now boots in ~4.2 s against ~12.5 s when every package was preloaded. The
+package directory holds only the `.pkg` files plus the manifest, rather than one `.txt` map per
+module (178 files when every package was preloaded eagerly).
 
 ### 2. Usable compile diagnostics
 
@@ -383,13 +388,15 @@ docker run --rm -v <repo>/scripts:/scripts:ro -v <repo>/.build/pkgs:/out \
 
 Mounting `/db` (and `/build`, which keeps the cloned sources and the already-built `bin/mhs`)
 makes re-runs incremental — only missing packages are built. To add packages without redoing the
-set, override `PACKAGES`, e.g. `PACKAGES='semigroups parsec pretty binary xhtml'`; the default
-is the full canonical list.
+set, override `PACKAGES`, e.g. `PACKAGES='fgl'`; the default is the full canonical list.
+`PACKAGES` is also how `binary` is rebuilt if it is ever re-evaluated — it is deliberately absent
+from the default (it is withheld, and mcabal rebuilt it on every run because its snapshot version
+and its `.cabal` version disagree).
 
 `scripts/build-packages-linux.sh` does the whole chain: clone MicroHs at the pinned commit →
 build the self-hosted `mhs` → build `mcabal` → build `cpphs` → install `base` → install
 `array transformers mtl containers random time unordered-containers async HUnit QuickCheck hspec
-parsec semigroups pretty binary xhtml` (each with `-r` for dependencies) → emit the DB. `base` is
+parsec semigroups pretty xhtml` (each with `-r` for dependencies) → emit the DB. `base` is
 installed first and kept between runs, so re-runs only build what is missing.
 Gotchas encoded in the script: `-P<name>` and `-L<name>` must be **joined** to their value
 (a bare `-L` silently lists every installed package, which is how the first dependency dump
@@ -416,7 +423,7 @@ lazy-loading section above). Grouped by purpose:
 | testing | `hspec-2.11.17`, `hspec-core-2.11.17`, `hspec-expectations-0.8.4`, `hspec-discover-2.11.17`, `QuickCheck-2.18.0.0`, `quickcheck-io-0.2.0`, `HUnit-1.6.2.0`, `call-stack-0.4.0` |
 | concurrency | `async-2.2.6` |
 | deps pulled in | `ansi-terminal-1.1.5`, `ansi-terminal-types-1.1.3`, `colour-2.3.7`, `filepath-1.5.5.0`, `os-string-2.0.10`, `haskell-lexer-1.2.1`, `ghc-compat-0.5.11.0` |
-| built but **not shipped** | `binary-0.8.9.2` — compiles, but `Data.Binary.Get` hangs; see above |
+| built but **not shipped** | `binary-0.8.9.2` — compiles, but `Data.Binary.Get` hangs; also dropped from the build's default `PACKAGES`, since mcabal rebuilt it on every run |
 | — | `base-0.16.6.0` — **not shipped**; base is embedded in the wasm |
 
 Adding a package is three steps: build it, copy the `.pkg` into `public/pkgs/packages/`, re-run
@@ -506,8 +513,9 @@ A probe of the 15 previously-missing modules (`Data.Sequence`, `Data.IntMap`,
 `Data.Map.Strict/Lazy`, `Control.Monad.Reader/Writer/Except/RWS`, `Control.Monad.Trans.State`,
 `Data.Array.ST/IO`, `Data.Tree`, `Data.Graph`, `Data.IntSet`, `Data.Functor.Identity`) now
 reports **OK** for all of them. Adding a package is therefore: build its `.pkg`, drop it in
-`public/pkgs/packages/`, and regenerate `index.json` with `scripts/build-manifest.ps1` — the
-wasm is untouched and nothing else needs changing.
+`public/pkgs/packages/`, and regenerate `index.json` with `node scripts/build-manifest.js` — the
+wasm is untouched and nothing else needs changing. The full runbook is in
+[BUILD.md](BUILD.md).
 
 #### Provenance — real packages vs MicroHs forks
 
