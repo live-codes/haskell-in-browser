@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MicroHs spike — REPL-driven Haskell</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: #14161a;
+        color: #e6e6e6;
+        font-size: 13px;
+      }
+      header {
+        padding: 10px 16px;
+        border-bottom: 1px solid #2a2f37;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      header h1 {
+        font-size: 14px;
+        margin: 0;
+        font-weight: 600;
+      }
+      #status {
+        margin-left: auto;
+        color: #8b95a5;
+      }
+      #status.ok {
+        color: #4ade80;
+      }
+      #status.err {
+        color: #f87171;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px;
+        background: #2a2f37;
+        height: calc(100vh - 41px);
+      }
+      section {
+        background: #14161a;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding: 12px;
+        gap: 8px;
+      }
+      label {
+        color: #8b95a5;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      textarea {
+        background: #0d0f12;
+        color: #e6e6e6;
+        border: 1px solid #2a2f37;
+        border-radius: 4px;
+        padding: 8px;
+        font: inherit;
+        resize: vertical;
+      }
+      #source {
+        flex: 1;
+        min-height: 160px;
+      }
+      #stdin {
+        height: 60px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      button {
+        background: #2563eb;
+        border: 0;
+        color: white;
+        padding: 6px 14px;
+        border-radius: 4px;
+        font: inherit;
+        cursor: pointer;
+      }
+      button:disabled {
+        background: #374151;
+        color: #9ca3af;
+        cursor: not-allowed;
+      }
+      button.ghost {
+        background: #1f2937;
+      }
+      select,
+      input[type='number'] {
+        background: #0d0f12;
+        color: #e6e6e6;
+        border: 1px solid #2a2f37;
+        border-radius: 4px;
+        padding: 5px 6px;
+        font: inherit;
+      }
+      pre {
+        background: #0d0f12;
+        border: 1px solid #2a2f37;
+        border-radius: 4px;
+        padding: 8px;
+        margin: 0;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      #output {
+        flex: 1;
+        min-height: 120px;
+      }
+      #log {
+        height: 34%;
+        min-height: 90px;
+        color: #8b95a5;
+      }
+      #meta {
+        color: #8b95a5;
+      }
+      canvas {
+        width: 100%;
+        height: 120px;
+        background: #000;
+        border: 1px solid #2a2f37;
+        border-radius: 4px;
+      }
+      input[type='text'] {
+        flex: 1;
+        background: #0d0f12;
+        color: #e6e6e6;
+        border: 1px solid #2a2f37;
+        border-radius: 4px;
+        padding: 6px 8px;
+        font: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>MicroHs spike — REPL-driven Haskell</h1>
+      <span id="status">booting…</span>
+    </header>
+
+    <main>
+      <section>
+        <label for="source">Haskell source (module Main with main)</label>
+        <textarea id="source" spellcheck="false">
+module Main where
+
+main :: IO ()
+main = do
+  putStrLn "hello from MicroHs"
+  print (sum [1 .. 10])</textarea
+        >
+
+        <label for="stdin">stdin (note: interactive input path still under investigation)</label>
+        <textarea id="stdin" spellcheck="false"></textarea>
+
+        <div class="row">
+          <label for="engine">Engine</label>
+          <select id="engine">
+            <option value="worker">worker (timeout-safe)</option>
+            <option value="main">main thread (canvhs)</option>
+          </select>
+          <label for="mode">Mode</label>
+          <select id="mode">
+            <option value="run">run main</option>
+            <option value="eval">eval expression</option>
+          </select>
+          <label for="timeout">Timeout</label>
+          <input id="timeout" type="number" value="20000" style="width: 90px" />
+        </div>
+
+        <div class="row">
+          <label for="expr">Expression</label>
+          <input id="expr" type="text" value="map (+1) [1..5]" />
+        </div>
+
+        <div class="row">
+          <button id="run">Run</button>
+          <button id="kill" class="ghost">Kill worker</button>
+          <button id="reload" class="ghost">Reload page</button>
+          <span id="meta"></span>
+        </div>
+
+        <label for="output">Result</label>
+        <pre id="output">(not run yet)</pre>
+      </section>
+
+      <section>
+        <label>canvhs canvas (for Graphics.CanvHs demos)</label>
+        <canvas id="canvas"></canvas>
+
+        <label for="manual">Send a line to the REPL (debugging)</label>
+        <div class="row">
+          <input id="manual" type="text" placeholder="e.g. 1+1" />
+          <button id="send" class="ghost">Send</button>
+        </div>
+
+        <label for="log">Log</label>
+        <pre id="log"></pre>
+      </section>
+    </main>
+
+    <script src="canvhs-glue.js"></script>
+    <script src="repl-runner.js"></script>
+    <script src="worker-runner.js"></script>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const status = $('status');
+      const output = $('output');
+      const logEl = $('log');
+
+      function setStatus(text, cls) {
+        status.textContent = text;
+        status.className = cls || '';
+      }
+
+      function log(line) {
+        logEl.textContent += line + '\n';
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      mhsRepl.on('log', log);
+      mhsRepl.on('exit', (code) => log('[main-thread REPL exited] ' + code));
+      mhsWorker.onLog(log);
+
+      async function runWithWorker(mode, expr, timeout) {
+        return mhsWorker.run($('source').value, { mode, expr, timeout });
+      }
+
+      // The main-thread REPL also gives canvhs a DOM canvas, but a runaway
+      // program blocks the tab (there is no way to interrupt it).
+      async function runWithMain(mode, expr) {
+        if (!mhsRepl.state.ready) await mhsRepl.boot();
+        return mhsRepl.runHaskell({ source: $('source').value, mode, expr });
+      }
+
+      async function run() {
+        const engine = $('engine').value;
+        const mode = $('mode').value;
+        const expr = $('expr').value;
+        const timeout = Number($('timeout').value) || 20000;
+
+        $('run').disabled = true;
+        setStatus('running…');
+        output.textContent = '(running)';
+        const t0 = performance.now();
+        try {
+          const result =
+            engine === 'worker'
+              ? await runWithWorker(mode, expr, timeout)
+              : await runWithMain(mode, expr);
+          const ms = Math.round(performance.now() - t0);
+          const parts = [];
+          if (result.output) parts.push(result.output.replace(/\s+$/, ''));
+          if (result.error) parts.push('--- error ---\n' + result.error);
+          output.textContent = parts.join('\n') || '(no output)';
+          $('meta').textContent = 'exitCode=' + result.exitCode + ' · ' + ms + ' ms';
+          setStatus(result.error ? 'completed with error' : 'done', result.error ? 'err' : 'ok');
+        } catch (err) {
+          const ms = Math.round(performance.now() - t0);
+          output.textContent = String(err && err.message ? err.message : err);
+          $('meta').textContent = ms + ' ms';
+          setStatus('failed', 'err');
+        } finally {
+          $('run').disabled = false;
+        }
+      }
+
+      $('run').addEventListener('click', run);
+      $('reload').addEventListener('click', () => location.reload());
+      $('kill').addEventListener('click', () => {
+        mhsWorker
+          .restart()
+          .then(() => log('worker restarted'))
+          .catch((err) => log('worker restart failed: ' + err.message));
+      });
+      $('send').addEventListener('click', async () => {
+        const line = $('manual').value;
+        if (!line) return;
+        if (!mhsRepl.state.ready) await mhsRepl.boot();
+        await mhsRepl.send(line);
+        $('manual').value = '';
+      });
+      $('manual').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') $('send').click();
+      });
+
+      // Expose the raw transcript for debugging.
+      window.dumpRaw = () => {
+        console.log(mhsRepl.getRaw());
+        return mhsRepl.getRaw();
+      };
+
+      setStatus('ready', 'ok');
+      log('page ready — the worker boots on the first Run');
+    </script>
+  </body>
+</html>
