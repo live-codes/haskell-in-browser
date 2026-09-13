@@ -19,7 +19,6 @@ const HOME = '/home/web_user';
 const MAIN_FILE = 'Main.hs';
 const PROMPT = '<<<LC_PROMPT>>>';
 const PKG_DIR = '/pkgs';
-const PERSIST_KEY = 'mhs.packages';
 
 // Program output arrives as UTF-8 bytes, one char code at a time; a streaming
 // decoder keeps multi-byte characters (e.g. hspec's check mark) intact.
@@ -42,29 +41,9 @@ const state = {
   files: {},
 };
 
-/** Packages persisted from a previous run (monotonic, so switching programs does not thrash). */
-function persistedPackages() {
-  try {
-    const raw = localStorage.getItem(PERSIST_KEY);
-    const list = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? list : [];
-  } catch (err) {
-    return [];
-  }
-}
-
-function persistPackages(list) {
-  try {
-    localStorage.setItem(PERSIST_KEY, JSON.stringify(list));
-  } catch (err) {
-    /* storage unavailable: lazy loading simply re-resolves each session */
-  }
-}
-
 /**
- * Decide which package files to load for this session.
- * Lazy (manifest has modules+packages): only what has been requested so far.
- * Legacy flat file list: everything, as before.
+ * Read the package manifest. Package files themselves are fetched on demand by
+ * `loadPackages`, so booting does not depend on which packages a program needs.
  * @returns {Promise<{files: Object<string, Uint8Array>, names: string[]}>}
  */
 async function collectPackages() {
@@ -73,6 +52,8 @@ async function collectPackages() {
 
   if (!manifest) return { files: {}, names: [] };
 
+  // Legacy flat manifest: it lists every file (including the module maps), so
+  // there is nothing to resolve — load them all up front.
   if (!window.mhsPackages.isLazy(manifest)) {
     const out = {};
     await Promise.all(
@@ -85,13 +66,7 @@ async function collectPackages() {
     return { files: out, names: [] };
   }
 
-  const names = persistedPackages();
-  const bytes = await window.mhsPackages.fetchPackages(names);
-  const files = {};
-  for (const name of Object.keys(bytes)) files['packages/' + name] = bytes[name];
-  const got = Object.keys(bytes);
-  emit('log', 'loaded ' + got.length + ' package(s) on demand: ' + (got.join(', ') || 'none'));
-  return { files, names: got };
+  return { files: {}, names: [] };
 }
 
 /** Escape a string as a Haskell string literal. */
@@ -286,10 +261,11 @@ async function boot() {
   const collected = await collectPackages();
   state.files = collected.files;
   state.loaded = collected.names;
-  const hasPackages = Object.keys(state.files).length > 0;
-  // `-aPATH` appends to the package search path, so packages written into the
-  // virtual FS become importable.
-  const args = hasPackages ? ['-a' + PKG_DIR] : [];
+
+  // `-aPATH` appends to the package search path. Declaring it up front (even when
+  // /pkgs is empty, which is harmless) means packages written into the virtual FS
+  // later are importable without restarting the REPL — see loadPackages().
+  const args = ['-a' + PKG_DIR];
 
   return new Promise((resolve, reject) => {
     const rc = ':set prompt=' + PROMPT + '\n';
@@ -368,6 +344,41 @@ async function boot() {
 }
 
 /**
+ * Write package files, and the module maps that point at them, into the live
+ * virtual FS. The package search path was declared at boot, so the compiler picks
+ * these up on the next import — the REPL does not restart and the page does not
+ * reload. Already-loaded packages are skipped, so the set only grows.
+ * @param {string[]} names package file names, e.g. "containers-0.8.pkg"
+ * @returns {Promise<string[]>} the package files actually written
+ */
+async function loadPackages(names) {
+  const want = (names || []).filter((n) => state.loaded.indexOf(n) === -1);
+  if (!want.length) return [];
+
+  const bytes = await window.mhsPackages.fetchPackages(want);
+  const got = Object.keys(bytes);
+  const FS = state.module.FS;
+
+  FS.mkdirTree(PKG_DIR + '/packages');
+  for (const name of got) {
+    state.files['packages/' + name] = bytes[name];
+    FS.writeFile(PKG_DIR + '/packages/' + name, bytes[name]);
+  }
+
+  // Module -> package maps are synthesised from the manifest rather than fetched.
+  for (const mod of window.mhsPackages.modulesOf(got, state.manifest)) {
+    const path = PKG_DIR + '/' + mod.replace(/\./g, '/') + '.txt';
+    const dir = path.slice(0, path.lastIndexOf('/'));
+    FS.mkdirTree(dir);
+    FS.writeFile(path, state.manifest.modules[mod]);
+  }
+
+  state.loaded = state.loaded.concat(got.filter((n) => state.loaded.indexOf(n) === -1));
+  emit('log', 'loaded ' + got.length + ' package(s): ' + (got.join(', ') || 'none'));
+  return got;
+}
+
+/**
  * @param {{source: string}} options
  * @returns {Promise<{output: string|null, error: string|null, exitCode: number, raw: string}>}
  */
@@ -387,12 +398,20 @@ async function runHaskell(options) {
     };
   }
 
-  // Lazy loading: if the program imports modules from packages that are not in this
-  // session, ask the caller to reload with them (the package path is fixed at boot).
+  // Packages are fetched and written into the live FS before compiling, so a
+  // program may pull in a package the session has never seen without a restart.
   const needed = analysis ? analysis.packages : null;
-  if (needed && !hasPackages(needed)) {
-    requestPackages(needed);
-    return { output: null, error: null, exitCode: 0, needsPackages: needed, reload: true };
+  if (needed && needed.length) {
+    await loadPackages(needed);
+    const absent = needed.filter((n) => state.loaded.indexOf(n) === -1);
+    if (absent.length) {
+      return {
+        output: null,
+        error: 'package file(s) missing from this build: ' + absent.join(', '),
+        exitCode: 1,
+        unavailable: absent,
+      };
+    }
   }
 
   if (!state.ready) throw new Error('REPL is not ready');
@@ -468,28 +487,6 @@ async function runHaskell(options) {
   }
 }
 
-/** Is this manifest capable of lazy loading? */
-function isLazy() {
-  return window.mhsPackages.isLazy(state.manifest);
-}
-
-/** Are the given package files all present in this session? */
-function hasPackages(names) {
-  if (!isLazy() || !names) return true;
-  return names.every((n) => state.loaded.indexOf(n) !== -1);
-}
-
-/**
- * Record that these packages are needed, so the next boot loads them.
- * The set is monotonic: switching between programs does not reload repeatedly.
- */
-function requestPackages(names) {
-  const union = Array.from(new Set(state.loaded.concat(names || []))).sort();
-  persistPackages(union);
-  emit('log', 'packages needed: ' + (names || []).join(', ') + ' — reload to load them');
-  return union;
-}
-
 window.mhsRepl = {
   boot,
   runHaskell,
@@ -500,9 +497,6 @@ window.mhsRepl = {
   getRaw: () => state.raw,
   promptCount,
   stdinShim,
-  isLazy,
-  hasPackages,
-  requestPackages,
-  persistedPackages,
+  loadPackages,
   explainNotFound,
 };

@@ -90,7 +90,8 @@ async function startRepl(opts) {
   const charDelay = options.charDelay == null ? 2 : options.charDelay;
   const stepTimeout = options.timeout || 60000;
 
-  process.argv = [process.argv[0], process.argv[1]]; // no module args => REPL
+  // No module args => REPL. Callers may pass extra compiler flags (e.g. -i<dir>).
+  process.argv = [process.argv[0], process.argv[1]].concat(options.args || []);
 
   const state = { raw: '', exited: false, exitCode: null };
 
@@ -116,6 +117,13 @@ async function startRepl(opts) {
       FS.chdir(HOME);
       FS.writeFile('.mhsi_rc', ':set prompt=' + PROMPT + '\n');
       FS.writeFile('Main.hs', '');
+      // Extra files for the virtual FS, keyed by absolute path: lets a caller set
+      // up a source tree or a package directory before the compiler starts.
+      for (const p of Object.keys(options.files || {})) {
+        const dir = p.slice(0, p.lastIndexOf('/'));
+        if (dir) FS.mkdirTree(dir);
+        FS.writeFile(p, options.files[p]);
+      }
     },
   ];
 

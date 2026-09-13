@@ -21,8 +21,9 @@ The harness takes a program, an input string, and a mode (`run main` / `eval exp
 Verify the package machinery without a browser:
 
 ```bash
-node scripts/test-manifest.js   # module classification (37 checks)
-node scripts/node-test.js       # REPL protocol, headless (5 cases)
+node scripts/test-manifest.js           # module classification (37 checks)
+node scripts/node-test.js               # REPL protocol, headless (5 cases)
+node scripts/probe-runtime-loading.js   # module loading at runtime (4 cases)
 ```
 
 ## Docs

@@ -194,6 +194,7 @@ contributor to rebuild the DB from scratch.
 | --- | --- |
 | package classification / manifest | `node scripts/test-manifest.js` |
 | REPL protocol, headless | `node scripts/node-test.js` |
+| source path + mid-session package loading | `node scripts/probe-runtime-loading.js` |
 | language feature matrix | `node scripts/feature-probe.js` |
 | browser flow | `node serve.js` → http://localhost:8123/ |
 

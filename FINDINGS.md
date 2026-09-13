@@ -262,27 +262,51 @@ accurate *"not available here, because X"* possible — see §5.
 **synthesised from the manifest** rather than shipped as one tiny file per module. A legacy flat
 file list is still understood (and simply disables lazy loading).
 
-Because the package path is fixed at boot, a program needing a package that is not loaded
-causes a reload: the runner returns `{reload: true, needsPackages: […]}` with nothing executed,
-the page persists the source plus the enlarged package set and reloads, and boots straight
-into the run. The set is a **monotonic union**, so alternating between programs does not
-thrash. The worker engine instead discards and respawns the worker, which boots with the new
-set (no page reload) — its package plumbing works, though the worker engine itself is still
-unreliable for the reason noted above.
+The package path is declared at boot (`-a/pkgs`, harmless while the directory is empty) and
+module lookup happens at **import** time, so `runHaskell` can resolve a program's imports, fetch
+whatever is missing, write those `.pkg` files and their synthesised module maps into the virtual
+FS, and only then compile — no REPL restart, no page reload. That is the whole mechanism. The
+runner used to return `{reload: true}` and reload the page to enlarge the package set; that was
+never necessary (see "Correction" below). Within a session the loaded set is monotonic, so
+alternating between programs fetches nothing twice; across page loads everything is resolved
+again from the manifest, which the HTTP cache makes cheap. The worker engine still restarts its
+worker (its package plumbing works, though the engine itself remains unreliable for the reason
+noted above).
 
-**Verified in Chrome** (fresh `localStorage` each time):
+**Correction (verified): only the *path* must exist at boot, not the files.** `findPkgModule`
+looks for `<pkgPath>/<Module/Name>.txt` at import time (`MicroHs/Compile.hs`), so if `/pkgs` is
+on the package path (i.e. `-a/pkgs` was passed, even with the directory empty), a `.pkg` plus its
+module maps can be written into the virtual FS at **any** point and imported immediately.
+`scripts/probe-runtime-loading.js` pins this down: `import Text.PrettyPrint` fails while `/pkgs`
+is empty, then, after writing `pretty-1.1.3.6.pkg` and its six `Text/PrettyPrint*.txt` maps
+mid-session, the same import succeeds (`Loading package /pkgs/packages/pretty-1.1.3.6.pkg`) and
+`render (text "hi")` prints `hi`.
 
-| program | packages loaded |
+The same is true of **source** modules, with no packaging at all: the default source search path
+is `["."]` (the cwd, `/home/web_user`), and `findModulePath` opens `Module/Name.hs` from it, so a
+`.hs` file written into the FS is compiled on demand. Verified: `Foo/Bar.hs` → `import Foo.Bar` →
+`twice 21` → `42`, and a module written *after* boot (`Late.hs`) imported immediately. A file
+*off* the path is not found, which `-i<dir>` fixes — so a source directory is a second escape
+hatch. All three behaviours are covered by the probe above.
+
+**Verified in Chrome** — five runs in *one* page session, with `window.__sentinel` set before
+each Run and still present afterwards (a reload would have cleared it):
+
+| program | loaded for this run |
 | --- | --- |
-| `print (sum [1..10])` | **0** — nothing fetched |
+| `print (sum [1..10])` | **none** — 4.5 s, including boot |
 | `import qualified Data.Map` | 2 — `containers-0.8`, `array-mhs-0.5.8.0` |
 | `import Control.Monad.State` | 2 — `mtl-2.3.2`, `transformers-0.6.2.0` |
-| `import Test.QuickCheck` (and use it) | 9 — QuickCheck, random-mhs, splitmix, time, mtl, transformers, containers, array-mhs, ghc-compat |
+| `Test.QuickCheck` | 5 — QuickCheck, ghc-compat, time, splitmix, random-mhs (the other 4 of its 9 were already in) |
+| the Prelude program again | **none** |
+| `Test.Hspec` (a real spec) | 24 — the largest closure: `hspec` + `-core`/`-expectations`, `quickcheck-io`, `async`, `ansi-terminal`(+`-types`), `colour`, `haskell-lexer`, `os-string`, `exceptions`, `filepath`, `unordered-containers`, `HUnit`, … |
 
-each producing the right output, and `persistedPackages()` matching `state.loaded`. A
-Prelude-only run now boots in ~4.2 s against ~12.5 s when every package was preloaded. The
-package directory holds only the `.pkg` files plus the manifest, rather than one `.txt` map per
-module (178 files when every package was preloaded eagerly).
+A Prelude-only run boots in ~4.5 s against ~12.5 s when every package was preloaded. A package
+the manifest lists but that is not actually shipped fails with `package file(s) missing from this
+build: …` (verified by stubbing the fetcher) rather than a misleading `Module not found`.
+
+The package directory holds only the `.pkg` files plus the manifest, rather than one `.txt` map
+per module (178 files when every package was preloaded eagerly).
 
 ### 2. Usable compile diagnostics
 
@@ -362,8 +386,8 @@ in the message come from the manifest, so they cannot drift.
 
 Covered by `node scripts/test-manifest.js` — 37 checks (classification, prefix precedence,
 comment handling, reasons, message shape, and the parsec/pretty/xhtml closures). Verified in
-Chrome on the main-thread engine and the worker engine, plus the lazy-load/reload path from a
-cold `localStorage`.
+Chrome on the main-thread engine and the worker engine, plus the on-demand package path (a
+package the session has never seen, and a package written into an empty `/pkgs` mid-session).
 
 ### Building the package files — done
 
@@ -595,6 +619,7 @@ scripts/get-async.sh              installs unordered-containers + async + hspec
 scripts/probe-stdin.js            demonstrates that program stdin is dead (EOF)
 scripts/node-repl-run.js          Node REPL driver — same protocol, headlessly
 scripts/node-test.js              headless suite (5/5 passing)
+scripts/probe-runtime-loading.js  source path + mid-session package loading (4/4 passing)
 scripts/feature-probe.js          language-feature matrix (21/26)
 scripts/node-run.js               Node probe for the batch/argv paths (documents inertness)
 scripts/debug-packages.sh         one-off: how to read package metadata
@@ -614,4 +639,5 @@ Reproduce:
 - package support: `node scripts/test-manifest.js` (see `PACKAGES.md`)
 - headless suite: `node scripts/node-test.js`
 - feature matrix: `node scripts/feature-probe.js`
+- runtime loading (source path, packages added mid-session): `node scripts/probe-runtime-loading.js`
 - browser flow: `node serve.js`, then open http://localhost:8123/

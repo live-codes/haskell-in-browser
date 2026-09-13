@@ -27,10 +27,16 @@ curated set of modules users expect but that cannot be provided here. `packages.
 answer an import it cannot satisfy with an accurate explanation instead of a bare
 `Module not found`; the rules are edited in `../../scripts/module-support.json`, not here.
 
-The package search path is fixed when the compiler boots, so a program that imports a module
-from a package that is not loaded triggers a reload with the enlarged set (see
-`../index.html` `RESUME_KEY`). The set only ever grows, so switching between programs does not
-reload repeatedly.
+The package search path is declared when the compiler boots (`-a/pkgs`) and packages are
+written into the virtual FS on demand, so a program importing a module from a package that is
+not loaded yet simply loads it and carries on — no REPL restart, no page reload. Within a
+session the set only ever grows.
+
+The on-demand write is possible because module lookup happens at import time (`findPkgModule`,
+`Compile.hs`), **not** at boot: as long as `/pkgs` is on the package path — even empty — a `.pkg`
+and its module maps can be written into the virtual FS later and imported immediately. Verified
+with the pinned bundle by `scripts/probe-runtime-loading.js`; see FINDINGS.md "Correction
+(verified)".
 
 `base` is embedded in the wasm and must **not** be shipped here; dependencies on it are
 filtered out of the manifest.
