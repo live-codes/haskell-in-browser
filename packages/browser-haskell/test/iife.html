@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>browser-haskell — iife build</title>
+    <style>
+      body { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 2rem; max-width: 60rem; }
+      h1 { font-size: 1.1rem; }
+      code { background: #f2f2f2; padding: 0 .2em; }
+      #out { background: #111; color: #eee; padding: 1rem; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>@live-codes/browser-haskell — IIFE build</h1>
+    <p>
+      Loaded as a classic <code>&lt;script&gt;</code>, with <em>no</em> <code>baseUrl</code>: the
+      asset URLs have to come from <code>document.currentScript</code>. Checks the global and that
+      the package loader still works.
+    </p>
+    <pre id="out"></pre>
+
+    <script src="../dist/browser-haskell.iife.js"></script>
+    <script>
+      (async () => {
+        const out = document.getElementById('out');
+        const write = (line = '') => {
+          out.textContent += line + '\n';
+        };
+        out.textContent = '';
+        window.__done = false;
+
+        let passed = 0;
+        let failed = 0;
+        const check = (name, ok, detail) => {
+          if (ok) {
+            passed++;
+            write('PASS  ' + name);
+          } else {
+            failed++;
+            write('FAIL  ' + name + '  ' + detail);
+          }
+        };
+
+        try {
+          check(
+            'exposes the BrowserHaskell global',
+            typeof BrowserHaskell === 'object' && typeof BrowserHaskell.createHaskell === 'function',
+            typeof BrowserHaskell,
+          );
+
+          const haskell = await BrowserHaskell.createHaskell();
+          const hello = await haskell.run({ code: 'main :: IO ()\nmain = putStrLn "iife"' });
+          check(
+            'boots and runs with no options',
+            hello.stdout.trim() === 'iife' && hello.exitCode === 0 && hello.error === null,
+            JSON.stringify(hello),
+          );
+
+          const map = await haskell.run({
+            code:
+              'import qualified Data.Map as M\nmain :: IO ()\nmain = print (M.size (M.fromList [(1::Int,"a"),(2,"b")]))',
+          });
+          check(
+            'fetches a package on demand',
+            map.stdout.trim() === '2' && map.packages.includes('containers-0.8.pkg') && map.error === null,
+            JSON.stringify(map),
+          );
+
+          const stdin = await haskell.run({
+            code: 'main :: IO ()\nmain = do\n  l <- getLine\n  putStrLn (reverse l)',
+            stdin: 'abc\n',
+          });
+          check('stdin works in the IIFE build', stdin.stdout.trim() === 'cba', JSON.stringify(stdin));
+        } catch (err) {
+          failed++;
+          write('FAIL  threw: ' + (err && err.message));
+        }
+
+        write('');
+        write(passed + '/' + (passed + failed) + ' passed');
+        window.__summary = { passed, failed };
+        window.__done = true;
+      })();
+    </script>
+  </body>
+</html>

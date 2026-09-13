@@ -1,0 +1,46 @@
+{
+  "name": "@live-codes/browser-haskell",
+  "version": "0.1.0",
+  "description": "Run Haskell entirely in the browser, powered by MicroHs. No server, no install.",
+  "keywords": [
+    "haskell",
+    "microhs",
+    "wasm",
+    "webassembly",
+    "playground",
+    "livecodes",
+    "compiler"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/browser-haskell.mjs",
+  "module": "./dist/browser-haskell.mjs",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/browser-haskell.iife.js",
+  "jsdelivr": "./dist/browser-haskell.iife.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/browser-haskell.mjs",
+      "default": "./dist/browser-haskell.mjs"
+    },
+    "./iife": "./dist/browser-haskell.iife.js",
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "node build.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

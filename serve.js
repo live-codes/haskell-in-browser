@@ -4,14 +4,18 @@
  * Zero-dependency static file server for the spike.
  * Needed because Worker / fetch / WebAssembly streaming do not work over file://.
  *
- *   node serve.js [port]
+ *   node serve.js [port] [root]
+ *
+ * `root` defaults to `public/` (the harness) and is resolved against this file, so
+ * `node serve.js 8124 .` serves the whole repository — which is what the npm package
+ * lives in.
  */
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.join(__dirname, 'public');
+const ROOT = path.resolve(__dirname, process.argv[3] || 'public');
 const PORT = Number(process.argv[2] || 8123);
 
 const MIME = {

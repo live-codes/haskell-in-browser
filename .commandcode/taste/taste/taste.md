@@ -15,3 +15,10 @@
 - Wants everything a user would reasonably expect — e.g. the full standard/boot library set — available out of the box (lazily loaded), with no separate install step; treats "expected but missing" as a defect worth prioritising over adding more features. Confidence: 0.6
 - Asks the agent to confirm or challenge a proposed direction ("do you agree?") before committing to it, and values being told a plan is wrong/over-broad over getting agreement. Confidence: 0.5
 - Treats a misleading or bare error message (e.g. a compiler "not found" that hides *why* something is unavailable) as a defect to fix ahead of adding more capability; explicitly sequences work as "accurate error messages first, then breadth, then documentation". Confidence: 0.55
+- Requires new capabilities to be verified by actually *running* them (executing real programs end to end), not merely importing/compiling — treats "it imports" as insufficient evidence. Confidence: 0.6
+- Prefers published JavaScript libraries to be bundled and minified, shipping both IIFE and ESM builds. Confidence: 0.75
+- Values a small, simple public API surface for a package — favours an options-object initializer plus a couple of clear entry points over a broad API ("try to keep the API simple"). Confidence: 0.7
+- Expects executed-code APIs to return structured results (stdout, stderr, compile errors, exitCode) rather than raw output or exceptions. Confidence: 0.6
+- Names/adds npm packages scoped under the project's org namespace (e.g. `@live-codes/...`) rather than a bare unscoped name. Confidence: 0.55
+- Expects the heavy assets a library depends on (wasm binaries, data files, prebuilt packages) to be consumer-configurable at initialisation — e.g. a `baseUrl`/asset-URL option plus an import-map-style overrides map — rather than baked-in hard-coded paths. Confidence: 0.6
+- Scrutinises spec/compliance claims made in documentation (e.g. a README's "Haskell 2010 subset") and asks how far they actually hold, rather than accepting them at face value; wants claims backed by evidence. Confidence: 0.5

@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>browser-haskell — smoke test</title>
+    <style>
+      body { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 2rem; max-width: 60rem; }
+      h1 { font-size: 1.1rem; }
+      code { background: #f2f2f2; padding: 0 .2em; }
+      #out { background: #111; color: #eee; padding: 1rem; white-space: pre-wrap; }
+      .pass { color: #7ee787; }
+      .fail { color: #ff7b72; }
+      .dim { color: #8b949e; }
+    </style>
+  </head>
+  <body>
+    <h1>@live-codes/browser-haskell — smoke test</h1>
+    <p>
+      Runs the built <code>dist/browser-haskell.mjs</code> against the real wasm bundle and the real
+      package set. Serve the repository (<code>node serve.js 8123</code>) and open this page.
+    </p>
+    <pre id="out"></pre>
+    <script type="module">
+      import { createHaskell } from '../dist/browser-haskell.mjs';
+
+      const out = document.getElementById('out');
+      const write = (line = '') => {
+        out.textContent += line + '\n';
+      };
+      out.textContent = '';
+      window.__done = false;
+      window.__summary = null;
+
+      const prettyUrl = new URL('../dist/pkgs/packages/pretty-1.1.3.6.pkg', location.href).href;
+
+      const CASES = [
+        {
+          name: 'hello, no packages',
+          code: 'main :: IO ()\nmain = putStrLn "hello"',
+          expect: (r) =>
+            r.stdout.trim() === 'hello' && r.error === null && r.exitCode === 0 && r.packages.length === 0
+              ? null
+              : `stdout=${JSON.stringify(r.stdout)} error=${r.error} exit=${r.exitCode} pkgs=${r.packages}`,
+        },
+        {
+          name: 'compile error is reported, and is not stdout',
+          code: 'main :: IO ()\nmain = putStrLn (1 +)',
+          expect: (r) =>
+            r.error && /line \d+, col \d+/.test(r.error) && r.stdout === '' && r.exitCode === 1
+              ? null
+              : `error=${JSON.stringify(r.error)} stdout=${JSON.stringify(r.stdout)} exit=${r.exitCode}`,
+        },
+        {
+          name: 'runtime exception is reported',
+          code: 'main :: IO ()\nmain = error "boom"',
+          expect: (r) =>
+            r.error && r.error.includes('boom') && r.exitCode === 1
+              ? null
+              : `error=${JSON.stringify(r.error)} exit=${r.exitCode}`,
+        },
+        {
+          name: 'a package is fetched on demand (Data.Map)',
+          code:
+            'import qualified Data.Map as M\nmain :: IO ()\nmain = print (M.lookup 2 (M.fromList [(1::Int,"a"),(2,"b")]))',
+          expect: (r) =>
+            r.stdout.trim() === 'Just "b"' &&
+            r.packages.includes('containers-0.8.pkg') &&
+            r.error === null
+              ? null
+              : `stdout=${JSON.stringify(r.stdout)} pkgs=${r.packages} error=${r.error}`,
+        },
+        {
+          name: 'stdin reaches getLine',
+          code: 'main :: IO ()\nmain = do\n  l <- getLine\n  putStrLn ("hi " ++ l)',
+          stdin: 'world\n',
+          expect: (r) =>
+            r.stdout.trim() === 'hi world' ? null : `stdout=${JSON.stringify(r.stdout)} error=${r.error}`,
+        },
+        {
+          name: 'stdin is also available as lcInput / lcInputWords',
+          code: 'main :: IO ()\nmain = do\n  print lcInputWords\n  putStrLn (show (length lcInputLines))',
+          stdin: 'a b c\nd e\n',
+          expect: (r) =>
+            r.stdout.includes('["a","b","c","d","e"]') && r.stdout.includes('2')
+              ? null
+              : `stdout=${JSON.stringify(r.stdout)} error=${r.error}`,
+        },
+        {
+          name: 'readLn and getContents consume the same input',
+          code:
+            'main :: IO ()\nmain = do\n  n <- readLn\n  rest <- getContents\n  putStrLn (show (n + 1 :: Int) ++ "|" ++ rest)',
+          stdin: '41\nleft',
+          expect: (r) =>
+            r.stdout.includes('42|left') ? null : `stdout=${JSON.stringify(r.stdout)} error=${r.error}`,
+        },
+        {
+          name: 'stderr is separate from stdout',
+          code: 'import System.IO\nmain :: IO ()\nmain = do\n  hPutStrLn stderr "warn: careful"\n  putStrLn "ok"',
+          expect: (r) =>
+            r.stdout.trim() === 'ok' && r.stderr.includes('warn: careful') && r.error === null
+              ? null
+              : `stdout=${JSON.stringify(r.stdout)} stderr=${JSON.stringify(r.stderr)} error=${r.error}`,
+        },
+        {
+          name: 'an unavailable module explains itself',
+          code: 'import Data.Aeson\nmain :: IO ()\nmain = pure ()',
+          expect: (r) =>
+            r.error && r.error.includes('Data.Aeson') && /Not available/.test(r.error) && r.exitCode === 1
+              ? null
+              : `error=${JSON.stringify(r.error)}`,
+        },
+        {
+          name: 'importmap serves a package from an explicit URL',
+          code: 'import Text.PrettyPrint\nmain :: IO ()\nmain = putStrLn (render (text "from" <+> int 7))',
+          expect: (r) =>
+            r.stdout.trim() === 'from 7' && r.packages.includes('pretty-1.1.3.6.pkg') && r.error === null
+              ? null
+              : `stdout=${JSON.stringify(r.stdout)} pkgs=${r.packages} error=${r.error}`,
+        },
+      ];
+
+      const started = Date.now();
+      let passed = 0;
+      let failed = 0;
+
+      try {
+        write('booting MicroHs…');
+        const bootStart = Date.now();
+        // The importmap only affects Text.PrettyPrint, so one instance serves all cases.
+        const haskell = await createHaskell({
+          importmap: { 'Text.PrettyPrint': prettyUrl },
+        });
+        write(`booted in ${Date.now() - bootStart} ms (no packages fetched at boot)\n`);
+
+        for (const test of CASES) {
+          const t0 = Date.now();
+          const result = await haskell.run(test);
+          const ms = Date.now() - t0;
+          const problem = test.expect(result);
+          if (problem) {
+            failed++;
+            write(`FAIL  ${test.name}  (${ms} ms)`);
+            write(`      ${problem}`);
+          } else {
+            passed++;
+            const pkgs = result.packages.length ? `  [${result.packages.join(', ')}]` : '';
+            write(`PASS  ${test.name}  (${ms} ms)${pkgs}`);
+            if (result.stdout.trim()) write(`      stdout: ${JSON.stringify(result.stdout.trim())}`);
+          }
+        }
+      } catch (err) {
+        failed++;
+        write(`FAIL  harness threw: ${err && err.message}`);
+      }
+
+      write('');
+      write(`${passed}/${CASES.length} passed in ${Date.now() - started} ms`);
+      window.__summary = { passed, failed, total: CASES.length };
+      window.__done = true;
+    </script>
+  </body>
+</html>

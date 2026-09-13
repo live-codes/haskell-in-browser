@@ -89,7 +89,7 @@ Useful REPL commands (from `:help`): `:reload`, `:clear`, `:delete`, `:type`, `:
 | --- | --- |
 | **Worker context is unreliable** | `RangeError: Maximum call stack size exceeded` inside `mhs-embed.wasm` (`wasm-function[74]` recursing), caught via worker `unhandledrejection`. 1 success, 3+ failures with identical code. Worker runs on a smaller JS stack than the main thread, which this wasm build needs. |
 | **No interrupt / timeout on the main thread** | An infinite `main` blocks the tab; there is no way to interrupt a running emscripten instance. The worker would have provided this, but is not viable. |
-| **stdin not supported natively** | Verified three ways (fd-0 callback, chars pre-queued, chars during the run): the program's `getLine`/`getContents` always see EOF — the REPL's input queue is separate from the program's stdin. Replaced by a pure shim (`lcInput`/`lcInputLines`/`lcInputWords`), implemented and verified. |
+| **stdin not supported natively** | Verified three ways (fd-0 callback, chars pre-queued, chars during the run): the program's `getLine`/`getContents` always see EOF — the REPL's input queue is separate from the program's stdin. Replaced by a pure shim (`lcInput`/`lcInputLines`/`lcInputWords`), implemented and verified; the npm package also *shadows* `getLine`/`readLn`/`getContents`/`interact`, so ordinary stdin programs work unmodified (see "Input shim"). |
 | **Module caching** | Mitigated by `:reload`, but the REPL remains a stateful, accumulating session. |
 | **Not GHC** | MicroHs is an extended Haskell 2010 implementation at ~GHCi speed with its own error messages (`"Data/List.hs",389:11`). Many extensions *do* work (GADTs, RankNTypes, TypeApplications, OverloadedStrings, record dot); `TypeFamilies`, Template Haskell and `DeriveGeneric` do not. The common ecosystem packages (`containers`, `mtl`, `array`) are loaded at runtime; others are not packaged yet. |
 | Browser coverage | Only Chrome was available here; Safari/Firefox/mobile unverified. `web-mhs` has known Safari quirks. |
@@ -343,6 +343,28 @@ lcInputWords :: [String]
 
 Appended at the end of the module, so it needs no imports and cannot clash with the header.
 Wired to the harness's input box and verified (`1 2 3 4 5` → `15`).
+
+**Also solved, later: plain `getLine` works** (in the npm package, not the harness above). A
+top-level definition in `Main` *shadows* the one imported from `Prelude`, so the same injected input
+can back ordinary functions — `getLine`, `readLn`, `getContents` and `interact` are defined in terms
+of an `IORef` holding the input, and a program written for stdin just runs:
+
+```haskell
+-- injected, with `import Data.IORef` / `import System.IO.Unsafe` hoisted to the top
+getLine = do
+  s <- readIORef lcStdinRef
+  case s of
+    [] -> return ""
+    _  -> do
+      let (l, rest) = break (== '\n') s
+      writeIORef lcStdinRef (drop 1 rest)
+      return l
+```
+
+Verified end to end: `getLine` → `readLn` → `getContents` consume `"hello-stdin\n42\nleft over"`
+in order, giving `line=hello-stdin; n+1=43` then `rest="left over"`. Two consequences worth
+knowing: the imports must be hoisted (imports cannot follow declarations), and each shadowed name is
+only injected when the program does not define it itself, so a hand-written `getLine` still wins.
 
 ### 4. Readable program output
 
