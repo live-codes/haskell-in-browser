@@ -14,6 +14,7 @@
     "Control.Monad.Error.Class": "mtl-2.3.2.pkg",
     "Control.Monad.Except": "mtl-2.3.2.pkg",
     "Control.Monad.Identity": "mtl-2.3.2.pkg",
+    "Control.Monad.Loops": "monad-loops-0.4.3.pkg",
     "Control.Monad.Reader.Class": "mtl-2.3.2.pkg",
     "Control.Monad.Reader": "mtl-2.3.2.pkg",
     "Control.Monad.RWS.Class": "mtl-2.3.2.pkg",
@@ -52,6 +53,12 @@
     "Control.Monad.Writer.Lazy": "mtl-2.3.2.pkg",
     "Control.Monad.Writer.Strict": "mtl-2.3.2.pkg",
     "Control.Monad.Writer": "mtl-2.3.2.pkg",
+    "Control.Parallel.Strategies": "parallel-3.3.0.0.pkg",
+    "Control.Parallel": "parallel-3.3.0.0.pkg",
+    "Control.Seq": "parallel-3.3.0.0.pkg",
+    "Data.Algorithm.Diff": "Diff-1.0.2.pkg",
+    "Data.Algorithm.DiffContext": "Diff-1.0.2.pkg",
+    "Data.Algorithm.DiffOutput": "Diff-1.0.2.pkg",
     "Data.Array.Base": "array-mhs-0.5.8.0.pkg",
     "Data.Array.IArray": "array-mhs-0.5.8.0.pkg",
     "Data.Array.IO.Internals": "array-mhs-0.5.8.0.pkg",
@@ -79,8 +86,40 @@
     "Data.Colour.SRGB": "colour-2.3.7.pkg",
     "Data.Colour": "colour-2.3.7.pkg",
     "Data.Containers.ListUtils": "containers-0.8.pkg",
+    "Data.DList.DNonEmpty": "dlist-1.0.pkg",
+    "Data.DList.Unsafe": "dlist-1.0.pkg",
+    "Data.DList": "dlist-1.0.pkg",
+    "Data.FingerTree": "fingertree-0.1.6.3.pkg",
     "Data.Functor.Constant": "transformers-0.6.2.0.pkg",
     "Data.Functor.Reverse": "transformers-0.6.2.0.pkg",
+    "Data.Graph.Inductive.Basic": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Example": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Graph": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Internal.Heap": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Internal.Queue": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Internal.RootPath": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Internal.Thread": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Monad.IOArray": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Monad.STArray": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Monad": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.NodeMap": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.PatriciaTree": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.ArtPoint": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.BCC": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.BFS": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.DFS": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.Dominators": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.GVD": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.Indep": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.MaxFlow": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.MaxFlow2": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.Monad": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.MST": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.SP": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query.TransClos": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Query": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive.Tree": "fgl-5.8.3.1.pkg",
+    "Data.Graph.Inductive": "fgl-5.8.3.1.pkg",
     "Data.Graph": "containers-0.8.pkg",
     "Data.HashMap.Internal.Array": "unordered-containers-0.2.21.pkg",
     "Data.HashMap.Internal.Debug": "unordered-containers-0.2.21.pkg",
@@ -89,8 +128,11 @@
     "Data.HashMap.Internal": "unordered-containers-0.2.21.pkg",
     "Data.HashMap.Lazy": "unordered-containers-0.2.21.pkg",
     "Data.HashMap.Strict": "unordered-containers-0.2.21.pkg",
+    "Data.HashPSQ": "psqueues-0.2.8.3.pkg",
     "Data.HashSet.Internal": "unordered-containers-0.2.21.pkg",
     "Data.HashSet": "unordered-containers-0.2.21.pkg",
+    "Data.Heap": "heaps-0.4.1.pkg",
+    "Data.IntervalMap.FingerTree": "fingertree-0.1.6.3.pkg",
     "Data.IntMap.Internal.Debug": "containers-0.8.pkg",
     "Data.IntMap.Internal": "containers-0.8.pkg",
     "Data.IntMap.Lazy": "containers-0.8.pkg",
@@ -99,9 +141,13 @@
     "Data.IntMap.Strict.Internal": "containers-0.8.pkg",
     "Data.IntMap.Strict": "containers-0.8.pkg",
     "Data.IntMap": "containers-0.8.pkg",
+    "Data.IntPSQ": "psqueues-0.2.8.3.pkg",
     "Data.IntSet.Internal.IntTreeCommons": "containers-0.8.pkg",
     "Data.IntSet.Internal": "containers-0.8.pkg",
     "Data.IntSet": "containers-0.8.pkg",
+    "Data.List.Ordered": "data-ordlist-0.4.7.0.pkg",
+    "Data.List.Split.Internals": "split-0.2.5.1.pkg",
+    "Data.List.Split": "split-0.2.5.1.pkg",
     "Data.Map.Internal.Debug": "containers-0.8.pkg",
     "Data.Map.Internal": "containers-0.8.pkg",
     "Data.Map.Lazy": "containers-0.8.pkg",
@@ -110,6 +156,17 @@
     "Data.Map.Strict.Internal": "containers-0.8.pkg",
     "Data.Map.Strict": "containers-0.8.pkg",
     "Data.Map": "containers-0.8.pkg",
+    "Data.Number.BigFloat": "numbers-3000.2.0.2.pkg",
+    "Data.Number.CReal": "numbers-3000.2.0.2.pkg",
+    "Data.Number.Dif": "numbers-3000.2.0.2.pkg",
+    "Data.Number.Fixed": "numbers-3000.2.0.2.pkg",
+    "Data.Number.FixedFunctions": "numbers-3000.2.0.2.pkg",
+    "Data.Number.Interval": "numbers-3000.2.0.2.pkg",
+    "Data.Number.Natural": "numbers-3000.2.0.2.pkg",
+    "Data.Number.Symbolic": "numbers-3000.2.0.2.pkg",
+    "Data.Number.Vectorspace": "numbers-3000.2.0.2.pkg",
+    "Data.OrdPSQ": "psqueues-0.2.8.3.pkg",
+    "Data.PriorityQueue.FingerTree": "fingertree-0.1.6.3.pkg",
     "Data.Semigroup.Generic": "semigroups-0.20.1.pkg",
     "Data.Sequence.Internal.Sorting": "containers-0.8.pkg",
     "Data.Sequence.Internal": "containers-0.8.pkg",
@@ -165,6 +222,20 @@
     "Language.Haskell.Lexer": "haskell-lexer-1.2.1.pkg",
     "Language.Haskell.TH.Quote": "ghc-compat-0.5.11.0.pkg",
     "Language.Haskell.TH.Syntax": "ghc-compat-0.5.11.0.pkg",
+    "Prettyprinter.Internal.Debug": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Internal.Type": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Internal": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Render.String": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Render.Text": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Render.Tutorials.StackMachineTutorial": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Render.Tutorials.TreeRenderingTutorial": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Render.Util.Panic": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Render.Util.SimpleDocTree": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Render.Util.StackMachine": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Symbols.Ascii": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Symbols.Unicode": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter.Util": "prettyprinter-1.7.2.pkg",
+    "Prettyprinter": "prettyprinter-1.7.2.pkg",
     "System.Console.ANSI.Codes": "ansi-terminal-types-1.1.3.pkg",
     "System.Console.ANSI.Types": "ansi-terminal-types-1.1.3.pkg",
     "System.Console.ANSI": "ansi-terminal-1.1.5.pkg",
@@ -244,6 +315,11 @@
     "Test.QuickCheck.Test": "QuickCheck-2.18.0.0.pkg",
     "Test.QuickCheck.Text": "QuickCheck-2.18.0.0.pkg",
     "Test.QuickCheck": "QuickCheck-2.18.0.0.pkg",
+    "Text.EditDistance": "edit-distance-0.2.2.1.pkg",
+    "Text.HTML.TagSoup.Entity": "tagsoup-0.14.8.pkg",
+    "Text.HTML.TagSoup.Match": "tagsoup-0.14.8.pkg",
+    "Text.HTML.TagSoup.Tree": "tagsoup-0.14.8.pkg",
+    "Text.HTML.TagSoup": "tagsoup-0.14.8.pkg",
     "Text.Parsec.ByteString.Lazy": "parsec-3.1.18.0.pkg",
     "Text.Parsec.ByteString": "parsec-3.1.18.0.pkg",
     "Text.Parsec.Char": "parsec-3.1.18.0.pkg",
@@ -275,6 +351,7 @@
     "Text.PrettyPrint.HughesPJ": "pretty-1.1.3.6.pkg",
     "Text.PrettyPrint.HughesPJClass": "pretty-1.1.3.6.pkg",
     "Text.PrettyPrint": "pretty-1.1.3.6.pkg",
+    "Text.StringLike": "tagsoup-0.14.8.pkg",
     "Text.XHtml.Debug": "xhtml-3000.2.2.1.pkg",
     "Text.XHtml.Frameset": "xhtml-3000.2.2.1.pkg",
     "Text.XHtml.Strict": "xhtml-3000.2.2.1.pkg",
@@ -283,6 +360,10 @@
     "Text.XHtml": "xhtml-3000.2.2.1.pkg"
   },
   "packages": {
+    "Diff-1.0.2.pkg": [
+      "array-mhs-0.5.8.0.pkg",
+      "pretty-1.1.3.6.pkg"
+    ],
     "HUnit-1.6.2.0.pkg": [
       "call-stack-0.4.0.pkg"
     ],
@@ -312,9 +393,22 @@
     "containers-0.8.pkg": [
       "array-mhs-0.5.8.0.pkg"
     ],
+    "data-ordlist-0.4.7.0.pkg": [],
+    "dlist-1.0.pkg": [
+      "ghc-compat-0.5.11.0.pkg"
+    ],
+    "edit-distance-0.2.2.1.pkg": [
+      "array-mhs-0.5.8.0.pkg",
+      "containers-0.8.pkg"
+    ],
     "exceptions-0.10.11.pkg": [
       "ghc-compat-0.5.11.0.pkg",
       "mtl-2.3.2.pkg",
+      "transformers-0.6.2.0.pkg"
+    ],
+    "fgl-5.8.3.1.pkg": [
+      "array-mhs-0.5.8.0.pkg",
+      "containers-0.8.pkg",
       "transformers-0.6.2.0.pkg"
     ],
     "filepath-1.5.5.0.pkg": [
@@ -322,8 +416,10 @@
       "ghc-compat-0.5.11.0.pkg",
       "os-string-2.0.10.pkg"
     ],
+    "fingertree-0.1.6.3.pkg": [],
     "ghc-compat-0.5.11.0.pkg": [],
     "haskell-lexer-1.2.1.pkg": [],
+    "heaps-0.4.1.pkg": [],
     "hspec-2.11.17.pkg": [
       "QuickCheck-2.18.0.0.pkg",
       "hspec-core-2.11.17.pkg",
@@ -353,17 +449,25 @@
       "HUnit-1.6.2.0.pkg",
       "call-stack-0.4.0.pkg"
     ],
+    "monad-loops-0.4.3.pkg": [],
     "mtl-2.3.2.pkg": [
       "transformers-0.6.2.0.pkg"
     ],
+    "numbers-3000.2.0.2.pkg": [],
     "os-string-2.0.10.pkg": [
       "exceptions-0.10.11.pkg",
       "ghc-compat-0.5.11.0.pkg"
+    ],
+    "parallel-3.3.0.0.pkg": [
+      "array-mhs-0.5.8.0.pkg",
+      "containers-0.8.pkg"
     ],
     "parsec-3.1.18.0.pkg": [
       "mtl-2.3.2.pkg"
     ],
     "pretty-1.1.3.6.pkg": [],
+    "prettyprinter-1.7.2.pkg": [],
+    "psqueues-0.2.8.3.pkg": [],
     "quickcheck-io-0.2.0.pkg": [
       "HUnit-1.6.2.0.pkg",
       "QuickCheck-2.18.0.0.pkg"
@@ -375,8 +479,13 @@
       "transformers-0.6.2.0.pkg"
     ],
     "semigroups-0.20.1.pkg": [],
+    "split-0.2.5.1.pkg": [],
     "splitmix-0.1.3.2.pkg": [
       "time-1.15.pkg"
+    ],
+    "tagsoup-0.14.8.pkg": [
+      "containers-0.8.pkg",
+      "ghc-compat-0.5.11.0.pkg"
     ],
     "time-1.15.pkg": [
       "ghc-compat-0.5.11.0.pkg"

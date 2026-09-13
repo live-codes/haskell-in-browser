@@ -1,7 +1,7 @@
 # Vendored MicroHs browser bundle
 
 Source: MicroHs `web-mhs/` at commit `455782164e75998b140d869c1b7cdde0c8a21508`
-(https://github.com/augustuss/MicroHs), also mirrored at https://microhs.org/web-mhs/.
+(https://github.com/augustss/MicroHs), also mirrored at https://microhs.org/web-mhs/.
 
 Both files are **byte-identical to upstream — no local patches.**
 

@@ -25,13 +25,15 @@ DB=${DB:-/db}
 # MicroCabal substitutes a few names (array -> array-mhs, random -> random-mhs) and
 # injects ghc-compat into every third-party package.
 # The tail of the list closes the GHC boot-library gap users would notice:
-# parsec (Text.Parsec), pretty (Text.PrettyPrint) and xhtml (Text.XHtml, needs semigroups).
+# parsec (Text.Parsec), pretty (Text.PrettyPrint) and xhtml (Text.XHtml, needs semigroups),
+# then the "worth adding next" set from PACKAGES.md: graphs, data structures beyond
+# containers, HTML parsing, list/diff utilities and prettyprinter.
 #
 # `binary` is deliberately absent: it compiles, but Data.Binary.Get hangs (see PACKAGES.md),
 # so it is not shipped — and because the Stackage snapshot calls it 0.8.9.3 while its own
 # .cabal says 0.8.9.2, mcabal re-clones and rebuilds it on *every* run. Add it to PACKAGES
 # (the case below pins it) if you ever want to re-evaluate it.
-PACKAGES=${PACKAGES:-"array transformers mtl containers random time unordered-containers async HUnit QuickCheck hspec parsec semigroups pretty xhtml"}
+PACKAGES=${PACKAGES:-"array transformers mtl containers random time unordered-containers async HUnit QuickCheck hspec parsec semigroups pretty xhtml fgl fingertree heaps psqueues tagsoup edit-distance Diff data-ordlist dlist split monad-loops prettyprinter numbers parallel"}
 
 mkdir -p "$WORK" "$OUT" "$DB"
 # Clear stale artifacts, but keep an existing package DB so re-runs only build what
@@ -124,6 +126,12 @@ for p in $PACKAGES; do
     QuickCheck) gitopt="--git=https://github.com/nick8325/quickcheck.git" ;;
     pretty) gitopt="--git=https://github.com/haskell/pretty.git --git-ref=v1.1.3.6" ;;
     binary) gitopt="--git=https://github.com/haskell/binary.git --git-ref=0.8.9.2" ;;
+    # These three are not installable from the snapshot, mirroring Makefile.packages:
+    # fgl and dlist's MicroHs support live on git (dlist on the `mhs` branch of a fork),
+    # and prettyprinter is a monorepo whose library sits in a subdirectory.
+    fgl) gitopt="--git=https://github.com/haskell/fgl" ;;
+    dlist) gitopt="--git=https://github.com/konsumlamm/dlist.git --git-ref=mhs" ;;
+    prettyprinter) gitopt="--git=https://github.com/haskell-prettyprinter/prettyprinter.git --dir=prettyprinter" ;;
   esac
   if mcabal --install="$DB" -r install $gitopt "$p"; then
     echo "ok: $p"

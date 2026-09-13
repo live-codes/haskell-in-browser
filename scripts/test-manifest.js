@@ -39,6 +39,21 @@ const cases = [
   ['Text.PrettyPrint', 'package', 'pretty-1.1.3.6.pkg'],
   ['Text.PrettyPrint.HughesPJ', 'package', 'pretty-1.1.3.6.pkg'],
   ['Text.XHtml', 'package', 'xhtml-3000.2.2.1.pkg'],
+  // the "worth adding next" batch from PACKAGES.md, each verified by running it
+  ['Data.Graph.Inductive', 'package', 'fgl-5.8.3.1.pkg'],
+  ['Data.PriorityQueue.FingerTree', 'package', 'fingertree-0.1.6.3.pkg'],
+  ['Data.Heap', 'package', 'heaps-0.4.1.pkg'],
+  ['Data.IntPSQ', 'package', 'psqueues-0.2.8.3.pkg'],
+  ['Text.HTML.TagSoup', 'package', 'tagsoup-0.14.8.pkg'],
+  ['Text.EditDistance', 'package', 'edit-distance-0.2.2.1.pkg'],
+  ['Data.Algorithm.Diff', 'package', 'Diff-1.0.2.pkg'],
+  ['Data.List.Ordered', 'package', 'data-ordlist-0.4.7.0.pkg'],
+  ['Data.DList', 'package', 'dlist-1.0.pkg'],
+  ['Data.List.Split', 'package', 'split-0.2.5.1.pkg'],
+  ['Control.Monad.Loops', 'package', 'monad-loops-0.4.3.pkg'],
+  ['Prettyprinter', 'package', 'prettyprinter-1.7.2.pkg'],
+  ['Data.Number.CReal', 'package', 'numbers-3000.2.0.2.pkg'],
+  ['Control.Parallel', 'package', 'parallel-3.3.0.0.pkg'],
   ['Data.List', 'embedded'],
   ['Data.Text', 'embedded'],
   ['Data.ByteString', 'embedded'],
@@ -125,6 +140,23 @@ check(
       bootExtras.packages.includes(p),
     ),
   JSON.stringify(bootExtras),
+);
+
+const newBatch = P.analyzeImports(
+  'module Main where\nimport Data.Graph.Inductive\nimport Text.HTML.TagSoup\nimport Data.Number.CReal\nmain = pure ()\n',
+  manifest,
+);
+check(
+  'imports: fgl + tagsoup + numbers resolve with their dependencies',
+  newBatch.missing.length === 0 &&
+    [
+      'fgl-5.8.3.1.pkg',
+      'tagsoup-0.14.8.pkg',
+      'numbers-3000.2.0.2.pkg',
+      'containers-0.8.pkg',
+      'ghc-compat-0.5.11.0.pkg',
+    ].every((p) => newBatch.packages.includes(p)),
+  JSON.stringify(newBatch),
 );
 
 const commented = P.analyzeImports(

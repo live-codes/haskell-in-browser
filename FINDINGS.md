@@ -158,6 +158,17 @@ Verified in Chrome with real programs — a parser (`parse number "" "12345"` �
 `render (text "hello" <+> int 42 <+> parens (char 'x'))` → `hello 42 (x)`, and
 `showHtml (paragraph << "hi" +++ ulist << […])` → the XHTML document string.
 
+Then the batch this document used to list as "worth adding next", all shipped and all run (not
+just imported): **`fgl`** (28 modules — `topsort (mkGraph …)` → `[1,2,3]`), **`tagsoup`**
+(`innerText` of `parseTags "<p>hi <b>there</b></p>"` → `hi there`), **`prettyprinter`**
+(14 modules — `layoutPretty`/`renderString` → `1 2`), **`numbers`** (`showCReal 10 (1/3)` →
+`0.3333333333`), **`psqueues`** (`IntPSQ.toList`, in priority order), **`heaps`** (`viewMin` of
+`[3,1,2]` → `Just 1`), **`edit-distance`** (`kitten`/`sitting` → `3`), **`fingertree`**,
+**`Diff`**, **`data-ordlist`**, **`dlist`**, **`split`**, **`monad-loops`** and **`parallel`**
+(`par` returns a correct result; one thread, so no real parallelism). Three of the fourteen are
+not installable from the snapshot and are pinned to git in the build script: `fgl`, `dlist` (the
+`mhs` branch of a fork) and `prettyprinter` (a monorepo subdirectory).
+
 **`binary` is built but deliberately *not* shipped.** It compiles, and `Data.Binary.Put`
 works (`runPut (putWord16be 258)` is 2 bytes), but **`Data.Binary.Get` / `decode` loops
 forever** — `runGet getWord16be (BL.pack [1,2])` never returns. Since a hang freezes the result
@@ -374,7 +385,7 @@ Not available in this playground:
   GHC.Prim — GHC internal modules are not exposed by MicroHs
   System.Posix.Process — POSIX-only modules are not available in the browser
 
-This playground provides base (196 modules) plus 29 packages (281 modules), including
+This playground provides base (196 modules) plus 43 packages (358 modules), including
 Data.Map, Control.Monad.State, System.Random, Data.Time, Test.Hspec, Test.QuickCheck, ….
 ```
 
@@ -434,8 +445,8 @@ from git rather than Hackage, mirroring MicroHs's own `Makefile.packages` — Qu
 
 Produced (MicroHs 0.16.6.0, combinator file v8.4 — matching the bundle exactly):
 
-**29 packages ship** (`public/pkgs/packages/`), totalling 8.0 MB, plus the `index.json`
-manifest — 30 files. Nothing is fetched until a program imports something from them (see the
+**43 packages ship** (`public/pkgs/packages/`), totalling 11.0 MB, plus the `index.json`
+manifest — 44 files. Nothing is fetched until a program imports something from them (see the
 lazy-loading section above). Grouped by purpose:
 
 | group | packages |
@@ -443,6 +454,9 @@ lazy-loading section above). Grouped by purpose:
 | containers / data | `containers-0.8`, `array-mhs-0.5.8.0`, `unordered-containers-0.2.21` |
 | effects | `transformers-0.6.2.0`, `mtl-2.3.2`, `exceptions-0.10.11` |
 | parsers / printers | `parsec-3.1.18.0`, `pretty-1.1.3.6`, `xhtml-3000.2.2.1`, `semigroups-0.20.1` |
+| graphs / data structures | `fgl-5.8.3.1`, `fingertree-0.1.6.3`, `heaps-0.4.1`, `psqueues-0.2.8.3`, `data-ordlist-0.4.7.0`, `dlist-1.0` |
+| parsing / diff / list utils | `tagsoup-0.14.8`, `edit-distance-0.2.2.1`, `Diff-1.0.2`, `split-0.2.5.1`, `prettyprinter-1.7.2` |
+| numeric / control | `numbers-3000.2.0.2`, `parallel-3.3.0.0`, `monad-loops-0.4.3` |
 | random / time | `random-mhs-1.3.2.2`, `splitmix-0.1.3.2`, `time-1.15` |
 | testing | `hspec-2.11.17`, `hspec-core-2.11.17`, `hspec-expectations-0.8.4`, `hspec-discover-2.11.17`, `QuickCheck-2.18.0.0`, `quickcheck-io-0.2.0`, `HUnit-1.6.2.0`, `call-stack-0.4.0` |
 | concurrency | `async-2.2.6` |
@@ -608,7 +622,7 @@ public/worker-runner.js        worker client with boot+run timeout (worker itsel
 public/haskell-worker.js       worker-side REPL driver + diagnostics
 public/canvhs-glue.js          Graphics.Canvhs JS glue (canvas, rAF, Web Audio)
 public/mhs/                    pinned bundle + VERSION.md
-public/pkgs/                   29 packages + index.json manifest (8.0 MB, 30 files)
+public/pkgs/                   43 packages + index.json manifest (11.0 MB, 44 files)
 scripts/build-packages-linux.sh   builds the .pkg files (Docker/Ubuntu; see above)
 scripts/build-manifest.js         generates public/pkgs/index.json from a build (Node —
                                   PowerShell's ConvertTo-Json mangles arrays)

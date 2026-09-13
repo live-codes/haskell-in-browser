@@ -40,7 +40,7 @@ node scripts/probe-runtime-loading.js   # module loading at runtime (4 cases)
 
 ```
 public/          the harness: runners, lazy package loader, canvas glue, pinned wasm bundle
-public/pkgs/     29 packages (8 MB) + index.json — fetched on demand, never up front
+public/pkgs/     43 packages (11 MB) + index.json — fetched on demand, never up front
 scripts/         package build (Docker), manifest generator, headless tests, probes
 .build/          build caches: toolchain, package DB, staged output (see BUILD.md)
 serve.js         zero-dependency static server (a server is required: workers/wasm need http)
@@ -49,8 +49,10 @@ serve.js         zero-dependency static server (a server is required: workers/wa
 ## Status
 
 Spike complete. The main-thread path is verified end to end in Chrome, including `containers`,
-`mtl`, `random`, `time`, `parsec`, `pretty`, `xhtml`, and the test frameworks `HUnit`,
-`QuickCheck` and `hspec`.
+`mtl`, `random`, `time`, `parsec`, `pretty`, `xhtml`, the test frameworks `HUnit`, `QuickCheck`
+and `hspec`, and the graph/data-structure/parsing batch — `fgl`, `fingertree`, `heaps`,
+`psqueues`, `tagsoup`, `edit-distance`, `Diff`, `data-ordlist`, `dlist`, `split`, `monad-loops`,
+`prettyprinter`, `numbers` and `parallel`.
 
 Known limits, in short: an infinite program freezes the tab (no interrupt on the main thread —
 recover by reloading), error messages are terse, Template Haskell and type families are absent,

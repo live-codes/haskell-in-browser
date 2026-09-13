@@ -55,28 +55,36 @@ available here".
 `quickcheck-io`, `call-stack`) and their dependencies (`ansi-terminal`, `ansi-terminal-types`,
 `colour`, `haskell-lexer`, `ghc-compat`).
 
+Then the batch this document used to list as "worth adding next", now all shipped: `fgl`
+(`Data.Graph.Inductive`, 28 modules), `fingertree`, `heaps`, `psqueues`, `tagsoup`,
+`edit-distance`, `Diff`, `data-ordlist`, `dlist`, `split`, `monad-loops`, `prettyprinter`
+(14 modules), `numbers` and `parallel`. Three of them are not installable from the snapshot and
+are pinned to git in the build script: `fgl`, `dlist` (the `mhs` branch of a fork) and
+`prettyprinter` (a monorepo subdirectory). `Control.Parallel` works, but a browser tab has one
+thread, so `par` is correctness-only.
+
 Every one of these is verified by *running* it, not just importing it — the evidence is in
 `FINDINGS.md`.
 
-## Worth adding next
+## Still unpackaged
 
-Candidates MicroHs is known to compile (they are in its
-[`Makefile.packages`](https://github.com/augustss/MicroHs/blob/master/Makefile.packages),
-*"These are the ones I know compile"*). Roughly ordered by usefulness in a learning playground
-or for competitive programming:
+MicroHs's [`Makefile.packages`](https://github.com/augustss/MicroHs/blob/master/Makefile.packages)
+is the list of packages it is known to compile. Everything a course or a contest reaches for is
+shipped above; what is left is ecosystem plumbing and narrow tooling, worth adding only when
+something asks for it by name:
 
-| package | why |
-| --- | --- |
-| `fgl` | graph algorithms — the usual next step after `containers` |
-| `fingertree`, `heaps`, `psqueues` | data structures beyond `containers` |
-| `tagsoup` | HTML/XML parsing; pairs with `xhtml` |
-| `edit-distance`, `Diff` | string/diff algorithms |
-| `data-ordlist`, `dlist`, `split`, `monad-loops` | list and utility staples |
-| `prettyprinter` | modern alternative to `pretty` |
-| `numbers` | arbitrary-precision and other numeric types |
-| `parallel` | parallelism (bounded by the wasm runtime) |
+- type-class plumbing other libraries depend on: `newtype`, `void`, `these`, `assoc`,
+  `indexed-traversable`, `transformers-compat`, `mmorph`, `base-orphans`, `comonad`,
+  `contravariant`, `distributive`, `data-default`/`-class`, `foldable1-classes-compat`,
+  `bifunctor-classes-compat`;
+- support and glue: `StateVar`, `unliftio-core`, `vault`, `simple-affine-space`, `PSQueue`,
+  `polyparse`, `granite`, `nanospec`, `character-ps`, `time-units`, `cpu`, `timeit`, `tardis`,
+  `bimap`, `byteable`, `bytestring-builder`, `casing`, `composition`;
+- irrelevant in a browser tab: `optparse-applicative` (there is no argv), `terminfo` (no
+  terminal), `xml` (use `tagsoup` or `xhtml`), `js-jquery`/`js-flot`/`js-dgtable`.
 
-Their transitive dependencies come along automatically, so this is mostly "add the leaf".
+Being on that list is a claim about MicroHs, not about this playground: none of them is built or
+verified here.
 
 ## Deliberately **not** supported
 
