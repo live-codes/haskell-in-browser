@@ -100,7 +100,7 @@
         background: #1f2937;
       }
       select,
-      input[type='number'] {
+      input[type="number"] {
         background: #0d0f12;
         color: #e6e6e6;
         border: 1px solid #2a2f37;
@@ -137,7 +137,7 @@
         border: 1px solid #2a2f37;
         border-radius: 4px;
       }
-      input[type='text'] {
+      input[type="text"] {
         flex: 1;
         background: #0d0f12;
         color: #e6e6e6;
@@ -166,14 +166,16 @@ main = do
   print (sum [1 .. 10])</textarea
         >
 
-        <label for="stdin">stdin (note: interactive input path still under investigation)</label>
+        <label for="stdin"
+          >stdin (note: interactive input path still under investigation)</label
+        >
         <textarea id="stdin" spellcheck="false"></textarea>
 
         <div class="row">
           <label for="engine">Engine</label>
           <select id="engine">
-            <option value="worker">worker (timeout-safe)</option>
             <option value="main">main thread (canvhs)</option>
+            <option value="worker">worker (timeout-safe)</option>
           </select>
           <label for="mode">Mode</label>
           <select id="mode">
@@ -220,84 +222,88 @@ main = do
     <script src="worker-runner.js"></script>
     <script>
       const $ = (id) => document.getElementById(id);
-      const status = $('status');
-      const output = $('output');
-      const logEl = $('log');
+      const status = $("status");
+      const output = $("output");
+      const logEl = $("log");
 
       function setStatus(text, cls) {
         status.textContent = text;
-        status.className = cls || '';
+        status.className = cls || "";
       }
 
       function log(line) {
-        logEl.textContent += line + '\n';
+        logEl.textContent += line + "\n";
         logEl.scrollTop = logEl.scrollHeight;
       }
 
-      mhsRepl.on('log', log);
-      mhsRepl.on('exit', (code) => log('[main-thread REPL exited] ' + code));
+      mhsRepl.on("log", log);
+      mhsRepl.on("exit", (code) => log("[main-thread REPL exited] " + code));
       mhsWorker.onLog(log);
 
       async function runWithWorker(mode, expr, timeout) {
-        return mhsWorker.run($('source').value, { mode, expr, timeout });
+        return mhsWorker.run($("source").value, { mode, expr, timeout });
       }
 
       // The main-thread REPL also gives canvhs a DOM canvas, but a runaway
       // program blocks the tab (there is no way to interrupt it).
       async function runWithMain(mode, expr) {
         if (!mhsRepl.state.ready) await mhsRepl.boot();
-        return mhsRepl.runHaskell({ source: $('source').value, mode, expr });
+        return mhsRepl.runHaskell({ source: $("source").value, mode, expr });
       }
 
       async function run() {
-        const engine = $('engine').value;
-        const mode = $('mode').value;
-        const expr = $('expr').value;
-        const timeout = Number($('timeout').value) || 20000;
+        const engine = $("engine").value;
+        const mode = $("mode").value;
+        const expr = $("expr").value;
+        const timeout = Number($("timeout").value) || 20000;
 
-        $('run').disabled = true;
-        setStatus('running…');
-        output.textContent = '(running)';
+        $("run").disabled = true;
+        setStatus("running…");
+        output.textContent = "(running)";
         const t0 = performance.now();
         try {
           const result =
-            engine === 'worker'
+            engine === "worker"
               ? await runWithWorker(mode, expr, timeout)
               : await runWithMain(mode, expr);
           const ms = Math.round(performance.now() - t0);
           const parts = [];
-          if (result.output) parts.push(result.output.replace(/\s+$/, ''));
-          if (result.error) parts.push('--- error ---\n' + result.error);
-          output.textContent = parts.join('\n') || '(no output)';
-          $('meta').textContent = 'exitCode=' + result.exitCode + ' · ' + ms + ' ms';
-          setStatus(result.error ? 'completed with error' : 'done', result.error ? 'err' : 'ok');
+          if (result.output) parts.push(result.output.replace(/\s+$/, ""));
+          if (result.error) parts.push("--- error ---\n" + result.error);
+          output.textContent = parts.join("\n") || "(no output)";
+          $("meta").textContent =
+            "exitCode=" + result.exitCode + " · " + ms + " ms";
+          setStatus(
+            result.error ? "completed with error" : "done",
+            result.error ? "err" : "ok",
+          );
         } catch (err) {
           const ms = Math.round(performance.now() - t0);
           output.textContent = String(err && err.message ? err.message : err);
-          $('meta').textContent = ms + ' ms';
-          setStatus('failed', 'err');
+          $("meta").textContent = ms + " ms";
+          setStatus("failed", "err");
         } finally {
-          $('run').disabled = false;
+          $("run").disabled = false;
         }
       }
 
-      $('run').addEventListener('click', run);
-      $('reload').addEventListener('click', () => location.reload());
-      $('kill').addEventListener('click', () => {
+      $("run").addEventListener("click", run);
+      $("reload").addEventListener("click", () => location.reload());
+      $("kill").addEventListener("click", () => {
         mhsWorker
           .restart()
-          .then(() => log('worker restarted'))
-          .catch((err) => log('worker restart failed: ' + err.message));
+          .then(() => log("worker restarted"))
+          .catch((err) => log("worker restart failed: " + err.message));
       });
-      $('send').addEventListener('click', async () => {
-        const line = $('manual').value;
+      $("send").addEventListener("click", async () => {
+        const line = $("manual").value;
         if (!line) return;
         if (!mhsRepl.state.ready) await mhsRepl.boot();
         await mhsRepl.send(line);
-        $('manual').value = '';
+        $("manual").value = "";
       });
-      $('manual').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') $('send').click();
+      $("manual").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") $("send").click();
       });
 
       // Expose the raw transcript for debugging.
@@ -306,8 +312,8 @@ main = do
         return mhsRepl.getRaw();
       };
 
-      setStatus('ready', 'ok');
-      log('page ready — the worker boots on the first Run');
+      setStatus("ready", "ok");
+      log("page ready — the worker boots on the first Run");
     </script>
   </body>
 </html>
