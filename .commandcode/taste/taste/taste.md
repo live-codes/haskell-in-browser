@@ -28,3 +28,9 @@
 - Wants demo/example pages kept minimal and focused on the single supported path — strips engine selectors, mode buttons, timeout knobs and similar secondary controls instead of leaving them in. Confidence: 0.5
 - Wants public-facing demo pages to link back to the project's source repository on GitHub. Confidence: 0.45
 - Wants demo/harness pages to ship with built-in, ready-to-run example programs that each showcase a distinct capability (e.g. reading stdin, importing modules, canvas/graphics) — selectable from the UI rather than a single default snippet. Confidence: 0.5
+- Deploys the project via Cloudflare (built by cloning the Git repo) and expects the repo to clone/build cleanly there — reports a dirty repo state (e.g. a committed scratch dir causing a "No url found for submodule path" `.gitmodules` error) as a deployment-blocking defect to fix. Confidence: 0.4
+- Treats derived build caches (`.build/`, `node_modules/`) as things that must be gitignored and regenerated from the documented build, never committed — untracking them is preferred over deleting them from disk. Confidence: 0.55
+- Prefers agent changes left as local, unpushed commits so he can review and decide on pushing to the remote himself. Confidence: 0.5
+- Wants git/repo fixes verified against an actual fresh clone (mirroring what CI/deploy does) instead of assuming the fix works. Confidence: 0.55
+- Expects commit messages to document the root cause and rationale (multi-line body explaining what was wrong and why the fix is safe), not just a summary subject line. Confidence: 0.5
+- Avoids rewriting published git history without explicit approval, weighing the blast radius of the change first. Confidence: 0.5
