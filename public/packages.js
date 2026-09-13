@@ -1,0 +1,123 @@
+'use strict';
+
+/**
+ * Package manifest handling for lazy loading.
+ *
+ * The browser bundle embeds `base`; everything else lives in public/pkgs as MicroHs
+ * packages (.pkg) plus module maps. Fetching all of them on every boot is wasteful
+ * (177 files / ~3 MB), so instead we work out which packages a program actually
+ * imports and load only those.
+ *
+ * Manifest (public/pkgs/index.json):
+ *   {
+ *     "modules":  { "Data.Map": "containers-0.8.pkg", ... },
+ *     "packages": { "containers-0.8.pkg": ["array-mhs-0.5.8.0.pkg", ...], ... }
+ *   }
+ * A legacy flat array of file paths is still understood (and disables lazy loading).
+ *
+ * Package DB layout expected inside the virtual FS (see MicroHs.Package):
+ *   /pkgs/packages/<name>.pkg      serialized package
+ *   /pkgs/<Module>.txt             contains the package file name
+ */
+
+(function () {
+  const PKG_BASE = 'pkgs/';
+  const MANIFEST_URL = PKG_BASE + 'index.json';
+
+  let manifestPromise = null;
+
+  function loadManifest() {
+    if (!manifestPromise) {
+      manifestPromise = fetch(MANIFEST_URL, { cache: 'no-store' })
+        .then(function (res) {
+          return res.ok ? res.json() : null;
+        })
+        .then(function (m) {
+          if (!m) return null;
+          // Legacy: a flat list of files means "load everything" (no modules map).
+          if (Array.isArray(m)) return { files: m, modules: null, packages: null };
+          return m;
+        })
+        .catch(function () {
+          return null;
+        });
+    }
+    return manifestPromise;
+  }
+
+  /** Is lazy loading possible with this manifest? */
+  function isLazy(manifest) {
+    return !!(manifest && manifest.modules && manifest.packages);
+  }
+
+  /**
+   * Packages required by a program: the packages providing its imported modules,
+   * plus their transitive MicroHs dependencies.
+   * @returns {string[]|null} package file names, or null if it cannot be determined
+   */
+  function requiredFor(source, manifest) {
+    if (!isLazy(manifest)) return null;
+
+    const needed = new Set();
+    const importRe = /^[ \t]*import[ \t]+(?:safe[ \t]+)?(?:qualified[ \t]+)?(?:"[^"]*"[ \t]+)?([A-Z][A-Za-z0-9_.']*)/gm;
+    let m;
+    while ((m = importRe.exec(source)) !== null) {
+      const pkg = manifest.modules[m[1]];
+      if (pkg) needed.add(pkg);
+    }
+
+    const closure = new Set();
+    const queue = Array.from(needed);
+    while (queue.length) {
+      const pkg = queue.shift();
+      if (closure.has(pkg)) continue;
+      closure.add(pkg);
+      for (const dep of manifest.packages[pkg] || []) {
+        if (!closure.has(dep) && queue.indexOf(dep) === -1) queue.push(dep);
+      }
+    }
+    return Array.from(closure).sort();
+  }
+
+  /** Modules provided by the given package file names (for synthesising maps). */
+  function modulesOf(pkgFiles, manifest) {
+    const out = [];
+    if (!isLazy(manifest)) return out;
+    const wanted = new Set(pkgFiles);
+    for (const mod of Object.keys(manifest.modules)) {
+      if (wanted.has(manifest.modules[mod])) out.push(mod);
+    }
+    return out;
+  }
+
+  /** Fetch the given package files. @returns {Promise<Object<string, Uint8Array>>} */
+  function fetchPackages(pkgFiles) {
+    const out = {};
+    return Promise.all(
+      pkgFiles.map(function (name) {
+        return fetch(PKG_BASE + 'packages/' + name, { cache: 'force-cache' })
+          .then(function (res) {
+            if (!res.ok) return null;
+            return res.arrayBuffer().then(function (buf) {
+              out[name] = new Uint8Array(buf);
+            });
+          })
+          .catch(function () {
+            return null;
+          });
+      }),
+    ).then(function () {
+      return out;
+    });
+  }
+
+  // globalThis so the same file works in a window and in a Worker.
+  const api = globalThis.mhsPackages || {};
+  api.loadManifest = loadManifest;
+  api.isLazy = isLazy;
+  api.requiredFor = requiredFor;
+  api.modulesOf = modulesOf;
+  api.fetchPackages = fetchPackages;
+  api.PKG_BASE = PKG_BASE;
+  globalThis.mhsPackages = api;
+})();

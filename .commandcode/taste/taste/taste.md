@@ -9,3 +9,4 @@
 - Works on Windows with PowerShell but treats Linux containers (WSL/Docker) as an acceptable execution environment when the Windows toolchain is unsupported. Confidence: 0.6
 - Communicates in terse approvals and continuations ("yes, do that additions to bundle", "continue"), typically accepting the recommended option and letting the agent proceed autonomously rather than micromanaging. Confidence: 0.6
 - Cares about the provenance/authenticity of third-party dependencies — wants to know whether bundled libraries are genuine upstream releases versus project-specific re-implementations or forks, rather than assuming. Confidence: 0.5
+- Expects research/design work to be captured in a durable written findings document in the repo (e.g. a `FINDINGS.md`) and kept updated as the work progresses, not only explained in chat. Confidence: 0.5

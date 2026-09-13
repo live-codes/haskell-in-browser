@@ -219,6 +219,7 @@ main = do
     </main>
 
     <script src="canvhs-glue.js"></script>
+    <script src="packages.js"></script>
     <script src="repl-runner.js"></script>
     <script src="worker-runner.js"></script>
     <script>
@@ -226,6 +227,7 @@ main = do
       const status = $("status");
       const output = $("output");
       const logEl = $("log");
+      const RESUME_KEY = "mhs.resume";
 
       function setStatus(text, cls) {
         status.textContent = text;
@@ -277,6 +279,25 @@ main = do
             engine === "worker"
               ? await runWithWorker(mode, expr, timeout)
               : await runWithMain(mode, expr);
+
+          // Lazy loading: a program that imports new packages needs a fresh REPL
+          // (the package search path is fixed at boot), so reload and resume.
+          if (result && result.reload) {
+            try {
+              localStorage.setItem(
+                RESUME_KEY,
+                JSON.stringify({ source: $("source").value, stdin: $("stdin").value }),
+              );
+            } catch (e) {
+              /* ignore */
+            }
+            setStatus("loading packages…");
+            output.textContent =
+              "Loading package(s): " + (result.needsPackages || []).join(", ") + " — reloading…";
+            location.reload();
+            return;
+          }
+
           const ms = Math.round(performance.now() - t0);
           const parts = [];
           if (result.output) parts.push(result.output.replace(/\s+$/, ""));
@@ -325,6 +346,26 @@ main = do
 
       setStatus("ready", "ok");
       log("page ready — the worker boots on the first Run");
+
+      // Resume a run that was interrupted to load packages (see result.reload above).
+      (function resumeAfterPackageLoad() {
+        let saved = null;
+        try {
+          saved = JSON.parse(localStorage.getItem(RESUME_KEY) || "null");
+        } catch (e) {
+          saved = null;
+        }
+        if (!saved) return;
+        try {
+          localStorage.removeItem(RESUME_KEY);
+        } catch (e) {
+          /* ignore */
+        }
+        $("source").value = saved.source || "";
+        $("stdin").value = saved.stdin || "";
+        log("resuming run after loading packages");
+        $("run").click();
+      })();
     </script>
   </body>
 </html>

@@ -92,6 +92,15 @@ ls -l "$OUT" | head -5 || true
 log "refreshing the package set"
 mcabal update || echo "(mcabal update failed; continuing)"
 
+# hspec support: call-stack's Data.CallStack only exports HasCallStack when
+# `__GLASGOW_HASKELL__ >= 704`, which CPP does not define under mhs. Without it the
+# module compiles but does not export HasCallStack, and hspec-expectations fails with
+# "not exported: HasCallStack". Defining the macro for this one package restores the
+# GHC code path (ghc-compat already provides GHC.Stack.HasCallStack).
+log "rebuilding call-stack with __GLASGOW_HASKELL__ defined (for hspec)"
+mcabal --install="$DB" -r --options=-D__GLASGOW_HASKELL__=990 install call-stack \
+  || echo "call-stack rebuild failed"
+
 for p in $PACKAGES; do
   log "installing $p"
   # MicroHs's own Makefile.packages builds QuickCheck from git rather than the
@@ -127,4 +136,16 @@ done < <(find "$DB" -name '*.txt' -not -path '*/packages/*')
 
 log "output"
 find "$OUT" -type f | sort | while read -r f; do printf '%10s  %s\n' "$(stat -c%s "$f")" "${f#"$OUT"/}"; done
+
+# Package -> dependencies, used by the browser to load packages lazily.
+# Format: <pkg file>|<dep name-version> <dep name-version> ...
+log "dumping package dependencies"
+: > "$OUT/deps.txt"
+for pkg in $(find "$DB/mhs-0.16.6.0/packages" -maxdepth 1 -name '*.pkg' | sort); do
+  b=$(basename "$pkg")
+  # -L must be joined to its argument, like -P: a bare -L lists every package.
+  d=$(./bin/mhs "-L$pkg" 2>/dev/null | sed -n 's/^depends: //p')
+  echo "$b|$d" >> "$OUT/deps.txt"
+done
+echo "deps dumped for $(wc -l < "$OUT/deps.txt") packages"
 log "done"

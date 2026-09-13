@@ -1,0 +1,90 @@
+=== mhs --version ===
+MicroHs, version 0.16.6.0, combinator file version v8.4
+
+
+=== -L by full path ===
+pkg=/db/mhs-0.16.6.0/packages/containers-0.8.pkg
+/db/mhs-0.16.6.0/packages:
+  HUnit-1.6.2.0
+  QuickCheck-2.18.0.0
+  ansi-terminal-1.1.5
+  ansi-terminal-types-1.1.3
+  array-mhs-0.5.8.0
+  base-0.16.6.0
+  call-stack-0.4.0
+  colour-2.3.7
+  containers-0.8
+  exceptions-0.10.11
+  filepath-1.5.5.0
+
+=== -L by package name-version ===
+/db/mhs-0.16.6.0/packages:
+  HUnit-1.6.2.0
+  QuickCheck-2.18.0.0
+  ansi-terminal-1.1.5
+  ansi-terminal-types-1.1.3
+  array-mhs-0.5.8.0
+  base-0.16.6.0
+  call-stack-0.4.0
+  colour-2.3.7
+  containers-0.8
+  exceptions-0.10.11
+  filepath-1.5.5.0
+
+=== -L by bare name ===
+/db/mhs-0.16.6.0/packages:
+  HUnit-1.6.2.0
+  QuickCheck-2.18.0.0
+  ansi-terminal-1.1.5
+  ansi-terminal-types-1.1.3
+  array-mhs-0.5.8.0
+
+=== install async ===
+
+mcabal: uncaught exception: error: "/build/MicroCabal/src/MicroCabal/Main.hs",253:12: no PKG.cabal file
+mcabal: Build package async
+mcabal: Building in /db/packages/async-2.2.6
+async: FAILED
+
+=== install hspec ===
+Changing package array to array-mhs
+Changing package random to random-mhs
+
+mhs: uncaught exception: error: "src/Test/Hspec/Core/Util.hs": line 34, col 18: Module not found: Control.Concurrent.Async
+search path=["src","vendor","dist-mcabal/autogen"]
+package path=["/db","/db/mhs-0.16.6.0","."]
+
+mcabal: uncaught exception: error: "/build/MicroHs/lib/System/Process.hs",22:22: callCommand: failed 256, cmd=
+"mhs -Phspec-core-2.11.17 -odist-mcabal/hspec-core-2.11.17.pkg -i -isrc -ivendor -idist-mcabal/autogen '-DVERSION_ghc_compat=\"0.5.11.0\"' '-DMIN_VERSION_ghc_compat(x,y,z)=((x)<0||(x)==0&&(y)<5||(x)==0&&(y)==5&&(z)<=11)' '-DVERSION_HUnit=\"1.6.2.0\"' '-DMIN_VERSION_HUnit(x,y,z)=((x)<1||(x)==1&&(y)<6||(x)==1&&(y)==6&&(z)<=2)' '-DVERSION_QuickCheck=\"2.18.0.0\"' '-DMIN_VERSION_QuickCheck(x,y,z)=((x)<2||(x)==2&&(y)<18||(x)==2&&(y)==18&&(z)<=0)' '-DVERSION_ansi_terminal=\"1.1.5\"' '-DMIN_VERSION_ansi_terminal(x,y,z)=((x)<1||(x)==1&&(y)<1||(x)==1&&(y)==1&&(z)<=5)' '-DVERSION_array=\"0.5.8.0\"' '-DMIN_VERSION_array(x,y,z)=((x)<0||(x)==0&&(y)<5||(x)==0&&(y)==5&&(z)<=8)' '-DVERSION_base=\"4.19.1.0\"' '-DMIN_VERSION_base(x,y,z)=((x)<4||(x)==4&&(y)<19||(x)==4&&(y)==19&&(z)<=1)' '-DVERSION_call_stack=\"0.4.0\"' '-DMIN_VERSION_call_stack(x,y,z)=((x)<0||(x)==0&&(y)<4||(x)==0&&(y)==4&&(z)<=0)' '-DVERSION_containers=\"0.8\"' '-DMIN_VERSION_containers(x,y,z)=((x)<0||(x)==0&&(y)<8||(x)==0&&(y)==8&&(z)<=0)' '-DVERSION_deepseq=\"1.4.4.0\"' '-DMIN_VERSION_deepseq(x,y,z)=((x)<1||(x)==1&&(y)<4||(x)==1&&(y)==4&&(z)<=4)' '-DVERSION_directory=\"1.3.8.1\"' '-DMIN_VERSION_directory(x,y,z)=((x)<1||(x)==1&&(y)<3||(x)==1&&(y)==3&&(z)<=8)' '-DVERSION_filepath=\"1.5.5.0\"' '-DMIN_VERSION_filepath(x,y,z)=((x)<1||(x)==1&&(y)<5||(x)==1&&(y)==5&&(z)<=5)' '-DVERSION_haskell_lexer=\"1.2.1\"' '-DMIN_VERSION_haskell_lexer(x,y,z)=((x)<1||(x)==1&&(y)<2||(x)==1&&(y)==2&&(z)<=1)' '-DVERSION_hspec_expectations=\"0.8.4\"' '-DMIN_VERSION_hspec_expectations(x,y,z)=((x)<0||(x)==0&&(y)<8||(x)==0&&(y)==8&&(z)<=4)' '-DVERSION_process=\"1.6.18.0\"' '-DMIN_VERSION_process(x,y,z)=((x)<1||(x)==1&&(y)<6||(x)==1&&(y)==6&&(z)<=18)' '-DVERSION_quickcheck_io=\"0.2.0\"' '-DMIN_VERSION_quickcheck_io(x,y,z)=((x)<0||(x)==0&&(y)<2||(x)==0&&(y)==2&&(z)<=0)' '-DVERSION_random=\"1.3.2.2\"' '-DMIN_VERSION_random(x,y,z)=((x)<1||(x)==1&&(y)<3||(x)==1&&(y)==3&&(z)<=2)' '-DVERSION_time=\"1.15\"' '-DMIN_VERSION_time(x,y,z)=((x)<1||(x)==1&&(y)<15||(x)==1&&(y)==15&&(z)<=0)' '-DVERSION_transformers=\"0.6.2.0\"' '-DMIN_VERSION_transformers(x,y,z)=((x)<0||(x)==0&&(y)<6||(x)==0&&(y)==6&&(z)<=2)' -a. Test.Hspec.Core.Extension Test.Hspec.Core.Extension.Item Test.Hspec.Core.Extension.Spec Test.Hspec.Core.Extension.Tree Test.Hspec.Core.Extension.Option Test.Hspec.Core.Extension.Config Test.Hspec.Core.Spec Test.Hspec.Core.Hooks Test.Hspec.Core.Runner Test.Hspec.Core.Format Test.Hspec.Core.Formatters Test.Hspec.Core.Formatters.V1 Test.Hspec.Core.Formatters.V2 Test.Hspec.Core.QuickCheck Test.Hspec.Core.Util"
+mcabal: Build package hspec
+mcabal: Building in /db/packages/hspec-2.11.17
+mcabal: Building library hspec
+mcabal:   Build package hspec-core
+mcabal:   Building in /db/packages/hspec-core-2.11.17
+mcabal:   Building library hspec-core
+hspec: FAILED
+
+=== packages now in the DB ===
+HUnit-1.6.2.0.pkg
+QuickCheck-2.18.0.0.pkg
+ansi-terminal-1.1.5.pkg
+ansi-terminal-types-1.1.3.pkg
+array-mhs-0.5.8.0.pkg
+base-0.16.6.0.pkg
+call-stack-0.4.0.pkg
+colour-2.3.7
+colour-2.3.7.pkg
+containers-0.8.pkg
+exceptions-0.10.11.pkg
+filepath-1.5.5.0.pkg
+ghc-compat-0.5.11.0.pkg
+haskell-lexer-1.2.1.pkg
+hspec-expectations-0.8.4.pkg
+mtl-2.3.2.pkg
+os-string-2.0.10.pkg
+quickcheck-io-0.2.0.pkg
+random-mhs-1.3.2.2.pkg
+splitmix-0.1.3.2.pkg
+time-1.15
+time-1.15.pkg
+transformers-0.6.2.0.pkg

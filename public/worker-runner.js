@@ -18,6 +18,8 @@
   let nextId = 1;
   const pending = new Map();
   const logHandlers = [];
+  /** Package files the current worker was booted with (fixed for its lifetime). */
+  let loadedPackages = [];
 
   function log(message) {
     for (const fn of logHandlers) fn(message);
@@ -95,6 +97,25 @@
   }
 
   /**
+   * Work out the package set this program needs; if the current worker was not
+   * booted with them, discard it so the next one loads the enlarged set (the
+   * package search path is fixed at boot).
+   */
+  async function resolvePackages(source) {
+    const manifest = await window.mhsPackages.loadManifest();
+    if (!window.mhsPackages.isLazy(manifest)) return [];
+    const needed = window.mhsPackages.requiredFor(source, manifest) || [];
+    const missing = needed.filter((p) => loadedPackages.indexOf(p) === -1);
+    if (missing.length) {
+      loadedPackages = Array.from(new Set(loadedPackages.concat(needed))).sort();
+      log('worker restarting to load: ' + missing.join(', '));
+      teardown(null);
+      bootError = null;
+    }
+    return loadedPackages;
+  }
+
+  /**
    * @param {string} source
    * @param {{mode?: 'run'|'eval', expr?: string, timeout?: number}} [options]
    * @returns {Promise<{output: string|null, error: string|null, exitCode: number}>}
@@ -103,42 +124,46 @@
     const opts = options || {};
     const timeout = opts.timeout || DEFAULT_TIMEOUT;
 
-    return new Promise((resolve, reject) => {
-      let settled = false;
-      const settle = (fn, value) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(bootTimer);
-        fn(value);
-      };
+    return resolvePackages(source).then(
+      (packages) =>
+        new Promise((resolve, reject) => {
+          let settled = false;
+          const settle = (fn, value) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(bootTimer);
+            fn(value);
+          };
 
-      // Covers boot as well as the run: a worker that never becomes ready still
-      // fails the call instead of hanging the page forever.
-      const bootTimer = setTimeout(() => {
-        const err = new Error('Timed out after ' + timeout + ' ms; compiler restarted.');
-        teardown(err);
-        settle(reject, err);
-      }, timeout);
+          // Covers boot as well as the run: a worker that never becomes ready still
+          // fails the call instead of hanging the page forever.
+          const bootTimer = setTimeout(() => {
+            const err = new Error('Timed out after ' + timeout + ' ms; compiler restarted.');
+            teardown(err);
+            settle(reject, err);
+          }, timeout);
 
-      ensure()
-        .then(() => {
-          if (settled) return;
-          const id = nextId++;
-          pending.set(id, {
-            resolve: (r) => settle(resolve, r),
-            reject: (e) => settle(reject, e),
-          });
-          worker.postMessage({
-            type: 'run',
-            id,
-            source,
-            mode: opts.mode || 'run',
-            expr: opts.expr,
-            input: opts.input,
-          });
-        })
-        .catch((err) => settle(reject, err));
-    });
+          ensure()
+            .then(() => {
+              if (settled) return;
+              const id = nextId++;
+              pending.set(id, {
+                resolve: (r) => settle(resolve, r),
+                reject: (e) => settle(reject, e),
+              });
+              worker.postMessage({
+                type: 'run',
+                id,
+                source,
+                mode: opts.mode || 'run',
+                expr: opts.expr,
+                input: opts.input,
+                packages,
+              });
+            })
+            .catch((err) => settle(reject, err));
+        }),
+    );
   }
 
   window.mhsWorker = {

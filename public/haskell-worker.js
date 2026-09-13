@@ -32,6 +32,23 @@ function wlog(message) {
   self.postMessage({ type: 'log', message: String(message) });
 }
 
+// Same lazy package resolution as the main-thread runner.
+importScripts('packages.js');
+
+let pkgFiles = {}; // relative path -> bytes, written into the virtual FS
+let pkgMode = false; // lazy manifest present?
+let pkgManifest = null;
+
+async function preparePackages(names) {
+  pkgManifest = await self.mhsPackages.loadManifest();
+  if (!self.mhsPackages.isLazy(pkgManifest)) return;
+  pkgMode = true;
+  const bytes = await self.mhsPackages.fetchPackages(names || []);
+  pkgFiles = {};
+  for (const n of Object.keys(bytes)) pkgFiles['packages/' + n] = bytes[n];
+  wlog('worker packages: ' + (Object.keys(bytes).join(', ') || 'none'));
+}
+
 self.addEventListener('error', (e) => {
   self.postMessage({ type: 'log', message: 'worker error event: ' + (e.message || e) });
 });
@@ -153,7 +170,7 @@ function classify(text) {
 function boot() {
   wlog('worker boot: configuring Module');
   self.Module = {
-    arguments: [],
+    arguments: Object.keys(pkgFiles).length ? ['-a/pkgs'] : [],
     locateFile: (p) => 'mhs/' + p,
     preRun: [
       function () {
@@ -162,6 +179,23 @@ function boot() {
         FS.chdir(HOME);
         FS.writeFile('.mhsi_rc', ':set prompt=' + PROMPT + '\n');
         FS.writeFile(MAIN_FILE, '');
+        for (const rel of Object.keys(pkgFiles)) {
+          const parts = rel.split('/');
+          const file = parts.pop();
+          const dir = '/pkgs' + (parts.length ? '/' + parts.join('/') : '');
+          FS.mkdirTree(dir);
+          FS.writeFile(dir + '/' + file, pkgFiles[rel]);
+        }
+        if (pkgMode) {
+          for (const mod of self.mhsPackages.modulesOf(
+            Object.keys(pkgFiles).map((p) => p.replace(/^packages\//, '')),
+            pkgManifest,
+          )) {
+            const path = '/pkgs/' + mod.replace(/\./g, '/') + '.txt';
+            FS.mkdirTree(path.slice(0, path.lastIndexOf('/')));
+            FS.writeFile(path, pkgManifest.modules[mod]);
+          }
+        }
         wlog('preRun: FS ready');
       },
     ],
@@ -254,7 +288,18 @@ self.onmessage = async function (e) {
   if (msg.type !== 'run') return;
   try {
     if (!booted) {
-      if (!booting) booting = boot();
+      // Boot lazily so the package set from the caller can be loaded first; the
+      // package search path cannot change after boot, so a new set needs a new worker.
+      if (!booting) {
+        await preparePackages(msg.packages);
+        booting = boot();
+        booting.catch((err) =>
+          self.postMessage({
+            type: 'fatal',
+            message: String(err && err.message ? err.message : err),
+          }),
+        );
+      }
       await booting;
     }
     if (abortMessage) throw new Error(abortMessage);
@@ -269,13 +314,3 @@ self.onmessage = async function (e) {
     });
   }
 };
-
-// Surface boot failures instead of hanging the caller.
-try {
-  booting = boot();
-  booting.catch((err) =>
-    self.postMessage({ type: 'fatal', message: String(err && err.message ? err.message : err) }),
-  );
-} catch (err) {
-  self.postMessage({ type: 'fatal', message: String(err && err.message ? err.message : err) });
-}

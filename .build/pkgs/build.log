@@ -2,6 +2,7 @@
 === fetching sources ===
 cloning https://github.com/augustss/MicroHs.git
 Cloning into '/build/MicroHs'...
+Updating files:  14% (98/675)Updating files:  15% (102/675)Updating files:  16% (108/675)Updating files:  17% (115/675)Updating files:  18% (122/675)Updating files:  19% (129/675)Updating files:  20% (135/675)Updating files:  21% (142/675)Updating files:  22% (149/675)Updating files:  23% (156/675)Updating files:  24% (162/675)Updating files:  25% (169/675)Updating files:  26% (176/675)Updating files:  26% (180/675)Updating files:  27% (183/675)Updating files:  28% (189/675)Updating files:  29% (196/675)Updating files:  30% (203/675)Updating files:  31% (210/675)Updating files:  32% (216/675)Updating files:  33% (223/675)Updating files:  34% (230/675)Updating files:  35% (237/675)Updating files:  36% (243/675)Updating files:  37% (250/675)Updating files:  38% (257/675)Updating files:  39% (264/675)Updating files:  39% (269/675)Updating files:  40% (270/675)Updating files:  41% (277/675)Updating files:  42% (284/675)Updating files:  43% (291/675)Updating files:  44% (297/675)Updating files:  45% (304/675)Updating files:  46% (311/675)Updating files:  47% (318/675)Updating files:  48% (324/675)Updating files:  49% (331/675)Updating files:  50% (338/675)Updating files:  51% (345/675)Updating files:  52% (351/675)Updating files:  53% (358/675)Updating files:  53% (363/675)Updating files:  54% (365/675)Updating files:  55% (372/675)Updating files:  56% (378/675)Updating files:  57% (385/675)Updating files:  58% (392/675)Updating files:  59% (399/675)Updating files:  60% (405/675)Updating files:  61% (412/675)Updating files:  62% (419/675)Updating files:  63% (426/675)Updating files:  64% (432/675)Updating files:  65% (439/675)Updating files:  66% (446/675)Updating files:  66% (452/675)Updating files:  67% (453/675)Updating files:  68% (459/675)Updating files:  69% (466/675)Updating files:  70% (473/675)Updating files:  71% (480/675)Updating files:  72% (486/675)Updating files:  73% (493/675)Updating files:  74% (500/675)Updating files:  75% (507/675)Updating files:  76% (513/675)Updating files:  77% (520/675)Updating files:  78% (527/675)Updating files:  79% (534/675)Updating files:  80% (540/675)Updating files:  81% (547/675)Updating files:  81% (551/675)Updating files:  82% (554/675)Updating files:  83% (561/675)Updating files:  84% (567/675)Updating files:  85% (574/675)Updating files:  86% (581/675)Updating files:  87% (588/675)Updating files:  88% (594/675)Updating files:  89% (601/675)Updating files:  90% (608/675)Updating files:  91% (615/675)Updating files:  92% (621/675)Updating files:  93% (628/675)Updating files:  94% (635/675)Updating files:  95% (642/675)Updating files:  96% (648/675)Updating files:  97% (655/675)Updating files:  98% (662/675)Updating files:  99% (669/675)Updating files:  99% (674/675)Updating files: 100% (675/675)Updating files: 100% (675/675), done.
 cloning https://github.com/augustss/MicroCabal.git
 Cloning into '/build/MicroCabal'...
 2:--  packageDbPath  package lookup path
@@ -15,48 +16,37 @@ MicroHs, version 0.16.6.0, combinator file version v8.4
 
 === building cpphs (needed by packages that use CPP) ===
 
-=== installing base into /db ===
-Installing package dist-mcabal/base-0.16.6.0.pkg in /db/mhs-0.16.6.0
-mcabal: Building library base
-mcabal: Installing library base
+=== base already installed in /db ===
 -- where did base land? --
 817973  /db/mhs-0.16.6.0/packages/base-0.16.6.0.pkg
-total 912
--rw-r--r-- 1 root root 817973 Sep 13 08:09 base-0.16.6.0.pkg
--rw-r--r-- 1 root root    702 Sep 13 08:09 build.log
-drwxr-xr-x 1 root root   4096 Sep 13 08:02 mhs-0.16.6.0
--rw-r--r-- 1 root root  96052 Sep 13 08:02 packages.txt
+total 820
+-rw-r--r-- 1 root root 817973 Sep 13 08:36 base-0.16.6.0.pkg
+-rw-r--r-- 1 root root   3496 Sep 13 08:36 build.log
 
 === refreshing the package set ===
 Changing package random to random-mhs
 Changing package array to array-mhs
 mcabal: Retrieving Stackage package list
 
+=== rebuilding call-stack with __GLASGOW_HASKELL__ defined (for hspec) ===
+Installing package dist-mcabal/call-stack-0.4.0.pkg in /db/mhs-0.16.6.0
+mcabal: Build package call-stack
+mcabal: Building in /db/packages/call-stack-0.4.0
+mcabal: Building library call-stack
+mcabal: Installing library call-stack
+
 === installing array ===
 Changing package array to array-mhs
-Changing package random to random-mhs
-Changing package array to array-mhs
-Installing package dist-mcabal/ghc-compat-0.5.11.0.pkg in /db/mhs-0.16.6.0
 Installing package dist-mcabal/array-mhs-0.5.8.0.pkg in /db/mhs-0.16.6.0
 mcabal: Build package array-mhs
-mcabal: No package list, running 'update' command
-mcabal: Retrieving Stackage package list
-mcabal: Running 'fetch array-mhs'
 mcabal: Building in /db/packages/array-mhs-0.5.8.0
 mcabal: Building library array-mhs
-mcabal:   Build package ghc-compat
-mcabal:   Running 'fetch ghc-compat'
-mcabal:   Building in /db/packages/ghc-compat-0.5.11.0
-mcabal:   Building library ghc-compat
-mcabal:   Installing library ghc-compat
-mcabal: Return to building target
 mcabal: Installing library array-mhs
 ok: array
 
 === installing transformers ===
 Installing package dist-mcabal/transformers-0.6.2.0.pkg in /db/mhs-0.16.6.0
 mcabal: Build package transformers
-mcabal: Running 'fetch transformers'
 mcabal: Building in /db/packages/transformers-0.6.2.0
 mcabal: Building library transformers
 mcabal: Installing library transformers
@@ -65,7 +55,6 @@ ok: transformers
 === installing mtl ===
 Installing package dist-mcabal/mtl-2.3.2.pkg in /db/mhs-0.16.6.0
 mcabal: Build package mtl
-mcabal: Running 'fetch mtl'
 mcabal: Building in /db/packages/mtl-2.3.2
 mcabal: Building library mtl
 mcabal: Installing library mtl
@@ -75,7 +64,6 @@ ok: mtl
 Changing package array to array-mhs
 Installing package dist-mcabal/containers-0.8.pkg in /db/mhs-0.16.6.0
 mcabal: Build package containers
-mcabal: Running 'fetch containers'
 mcabal: Building in /db/packages/containers-0.8
 mcabal: Building library containers
 mcabal: Installing library containers
@@ -83,25 +71,10 @@ ok: containers
 
 === installing random ===
 Changing package random to random-mhs
-Installing package dist-mcabal/time-1.15.pkg in /db/mhs-0.16.6.0
-Installing package dist-mcabal/splitmix-0.1.3.2.pkg in /db/mhs-0.16.6.0
 Installing package dist-mcabal/random-mhs-1.3.2.2.pkg in /db/mhs-0.16.6.0
 mcabal: Build package random-mhs
-mcabal: Running 'fetch random-mhs'
 mcabal: Building in /db/packages/random-mhs-1.3.2.2
 mcabal: Building library random-mhs
-mcabal:   Build package splitmix
-mcabal:   Running 'fetch splitmix'
-mcabal:   Building in /db/packages/splitmix-0.1.3.2
-mcabal:   Building library splitmix
-mcabal:     Build package time
-mcabal:     Running 'fetch time'
-mcabal:     Building in /db/packages/time-1.15
-mcabal:     Building library time
-mcabal:     Installing library time
-mcabal:   Return to building target
-mcabal:   Installing library splitmix
-mcabal: Return to building target
 mcabal: Installing library random-mhs
 ok: random
 
@@ -114,18 +87,10 @@ mcabal: Installing library time
 ok: time
 
 === installing HUnit ===
-Installing package dist-mcabal/call-stack-0.4.0.pkg in /db/mhs-0.16.6.0
 Installing package dist-mcabal/HUnit-1.6.2.0.pkg in /db/mhs-0.16.6.0
 mcabal: Build package HUnit
-mcabal: Running 'fetch HUnit'
 mcabal: Building in /db/packages/HUnit-1.6.2.0
 mcabal: Building library HUnit
-mcabal:   Build package call-stack
-mcabal:   Running 'fetch call-stack'
-mcabal:   Building in /db/packages/call-stack-0.4.0
-mcabal:   Building library call-stack
-mcabal:   Installing library call-stack
-mcabal: Return to building target
 mcabal: Installing library HUnit
 ok: HUnit
 
@@ -140,92 +105,54 @@ mcabal: Installing library QuickCheck
 ok: QuickCheck
 
 === installing hspec ===
-Installing package dist-mcabal/colour-2.3.7.pkg in /db/mhs-0.16.6.0
-Installing package dist-mcabal/ansi-terminal-types-1.1.3.pkg in /db/mhs-0.16.6.0
-Installing package dist-mcabal/ansi-terminal-1.1.5.pkg in /db/mhs-0.16.6.0
 Changing package array to array-mhs
-Installing package dist-mcabal/exceptions-0.10.11.pkg in /db/mhs-0.16.6.0
-Installing package dist-mcabal/os-string-2.0.10.pkg in /db/mhs-0.16.6.0
-Installing package dist-mcabal/filepath-1.5.5.0.pkg in /db/mhs-0.16.6.0
-Installing package dist-mcabal/haskell-lexer-1.2.1.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/hspec-expectations-0.8.4.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/quickcheck-io-0.2.0.pkg in /db/mhs-0.16.6.0
+Changing package random to random-mhs
 
-mhs: uncaught exception: error: "src/Test/Hspec/Expectations.hs": line 65, col 34: not exported: HasCallStack
+mhs: uncaught exception: error: "src/Test/Hspec/Core/Util.hs": line 34, col 18: Module not found: Control.Concurrent.Async
+search path=["src","vendor","dist-mcabal/autogen"]
+package path=["/db","/db/mhs-0.16.6.0","."]
 
 mcabal: uncaught exception: error: "/build/MicroHs/lib/System/Process.hs",22:22: callCommand: failed 256, cmd=
-"mhs -Phspec-expectations-0.8.4 -odist-mcabal/hspec-expectations-0.8.4.pkg -i -isrc -idist-mcabal/autogen '-DVERSION_ghc_compat=\"0.5.11.0\"' '-DMIN_VERSION_ghc_compat(x,y,z)=((x)<0||(x)==0&&(y)<5||(x)==0&&(y)==5&&(z)<=11)' '-DVERSION_HUnit=\"1.6.2.0\"' '-DMIN_VERSION_HUnit(x,y,z)=((x)<1||(x)==1&&(y)<6||(x)==1&&(y)==6&&(z)<=2)' '-DVERSION_base=\"4.19.1.0\"' '-DMIN_VERSION_base(x,y,z)=((x)<4||(x)==4&&(y)<19||(x)==4&&(y)==19&&(z)<=1)' '-DVERSION_call_stack=\"0.4.0\"' '-DMIN_VERSION_call_stack(x,y,z)=((x)<0||(x)==0&&(y)<4||(x)==0&&(y)==4&&(z)<=0)' -a. Test.Hspec.Expectations Test.Hspec.Expectations.Contrib"
+"mhs -Phspec-core-2.11.17 -odist-mcabal/hspec-core-2.11.17.pkg -i -isrc -ivendor -idist-mcabal/autogen '-DVERSION_ghc_compat=\"0.5.11.0\"' '-DMIN_VERSION_ghc_compat(x,y,z)=((x)<0||(x)==0&&(y)<5||(x)==0&&(y)==5&&(z)<=11)' '-DVERSION_HUnit=\"1.6.2.0\"' '-DMIN_VERSION_HUnit(x,y,z)=((x)<1||(x)==1&&(y)<6||(x)==1&&(y)==6&&(z)<=2)' '-DVERSION_QuickCheck=\"2.18.0.0\"' '-DMIN_VERSION_QuickCheck(x,y,z)=((x)<2||(x)==2&&(y)<18||(x)==2&&(y)==18&&(z)<=0)' '-DVERSION_ansi_terminal=\"1.1.5\"' '-DMIN_VERSION_ansi_terminal(x,y,z)=((x)<1||(x)==1&&(y)<1||(x)==1&&(y)==1&&(z)<=5)' '-DVERSION_array=\"0.5.8.0\"' '-DMIN_VERSION_array(x,y,z)=((x)<0||(x)==0&&(y)<5||(x)==0&&(y)==5&&(z)<=8)' '-DVERSION_base=\"4.19.1.0\"' '-DMIN_VERSION_base(x,y,z)=((x)<4||(x)==4&&(y)<19||(x)==4&&(y)==19&&(z)<=1)' '-DVERSION_call_stack=\"0.4.0\"' '-DMIN_VERSION_call_stack(x,y,z)=((x)<0||(x)==0&&(y)<4||(x)==0&&(y)==4&&(z)<=0)' '-DVERSION_containers=\"0.8\"' '-DMIN_VERSION_containers(x,y,z)=((x)<0||(x)==0&&(y)<8||(x)==0&&(y)==8&&(z)<=0)' '-DVERSION_deepseq=\"1.4.4.0\"' '-DMIN_VERSION_deepseq(x,y,z)=((x)<1||(x)==1&&(y)<4||(x)==1&&(y)==4&&(z)<=4)' '-DVERSION_directory=\"1.3.8.1\"' '-DMIN_VERSION_directory(x,y,z)=((x)<1||(x)==1&&(y)<3||(x)==1&&(y)==3&&(z)<=8)' '-DVERSION_filepath=\"1.5.5.0\"' '-DMIN_VERSION_filepath(x,y,z)=((x)<1||(x)==1&&(y)<5||(x)==1&&(y)==5&&(z)<=5)' '-DVERSION_haskell_lexer=\"1.2.1\"' '-DMIN_VERSION_haskell_lexer(x,y,z)=((x)<1||(x)==1&&(y)<2||(x)==1&&(y)==2&&(z)<=1)' '-DVERSION_hspec_expectations=\"0.8.4\"' '-DMIN_VERSION_hspec_expectations(x,y,z)=((x)<0||(x)==0&&(y)<8||(x)==0&&(y)==8&&(z)<=4)' '-DVERSION_process=\"1.6.18.0\"' '-DMIN_VERSION_process(x,y,z)=((x)<1||(x)==1&&(y)<6||(x)==1&&(y)==6&&(z)<=18)' '-DVERSION_quickcheck_io=\"0.2.0\"' '-DMIN_VERSION_quickcheck_io(x,y,z)=((x)<0||(x)==0&&(y)<2||(x)==0&&(y)==2&&(z)<=0)' '-DVERSION_random=\"1.3.2.2\"' '-DMIN_VERSION_random(x,y,z)=((x)<1||(x)==1&&(y)<3||(x)==1&&(y)==3&&(z)<=2)' '-DVERSION_time=\"1.15\"' '-DMIN_VERSION_time(x,y,z)=((x)<1||(x)==1&&(y)<15||(x)==1&&(y)==15&&(z)<=0)' '-DVERSION_transformers=\"0.6.2.0\"' '-DMIN_VERSION_transformers(x,y,z)=((x)<0||(x)==0&&(y)<6||(x)==0&&(y)==6&&(z)<=2)' -a. Test.Hspec.Core.Extension Test.Hspec.Core.Extension.Item Test.Hspec.Core.Extension.Spec Test.Hspec.Core.Extension.Tree Test.Hspec.Core.Extension.Option Test.Hspec.Core.Extension.Config Test.Hspec.Core.Spec Test.Hspec.Core.Hooks Test.Hspec.Core.Runner Test.Hspec.Core.Format Test.Hspec.Core.Formatters Test.Hspec.Core.Formatters.V1 Test.Hspec.Core.Formatters.V2 Test.Hspec.Core.QuickCheck Test.Hspec.Core.Util"
 mcabal: Build package hspec
-mcabal: Running 'fetch hspec'
 mcabal: Building in /db/packages/hspec-2.11.17
 mcabal: Building library hspec
 mcabal:   Build package hspec-core
-mcabal:   Running 'fetch hspec-core'
 mcabal:   Building in /db/packages/hspec-core-2.11.17
 mcabal:   Building library hspec-core
-mcabal:     Build package ansi-terminal
-mcabal:     Running 'fetch ansi-terminal'
-mcabal:     Building in /db/packages/ansi-terminal-1.1.5
-mcabal:     Building library ansi-terminal
-mcabal:       Build package ansi-terminal-types
-mcabal:       Running 'fetch ansi-terminal-types'
-mcabal:       Building in /db/packages/ansi-terminal-types-1.1.3
-mcabal:       Building library ansi-terminal-types
-mcabal:         Build package colour
-mcabal:         Running 'fetch colour'
-mcabal:         Building in /db/packages/colour-2.3.7
-mcabal:         Building library colour
-mcabal:         Installing library colour
-mcabal:       Return to building target
-mcabal:       Installing library ansi-terminal-types
-mcabal:     Return to building target
-mcabal:     Installing library ansi-terminal
-mcabal:   Return to building target
-mcabal:     Build package filepath
-mcabal:     Running 'fetch filepath'
-mcabal:     Building in /db/packages/filepath-1.5.5.0
-mcabal:     Building library filepath
-mcabal:       Build package exceptions
-mcabal:       Running 'fetch exceptions'
-mcabal:       Building in /db/packages/exceptions-0.10.11
-mcabal:       Building library exceptions
-mcabal:       Installing library exceptions
-mcabal:     Return to building target
-mcabal:       Build package os-string
-mcabal:       Running 'fetch os-string'
-mcabal:       Building in /db/packages/os-string-2.0.10
-mcabal:       Building library os-string
-mcabal:       Installing library os-string
-mcabal:     Return to building target
-mcabal:     Installing library filepath
-mcabal:   Return to building target
-mcabal:     Build package haskell-lexer
-mcabal:     Running 'fetch haskell-lexer'
-mcabal:     Building in /db/packages/haskell-lexer-1.2.1
-mcabal:     Building library haskell-lexer
-mcabal:     Installing library haskell-lexer
-mcabal:   Return to building target
 mcabal:     Build package hspec-expectations
-mcabal:     Running 'fetch hspec-expectations'
 mcabal:     Building in /db/packages/hspec-expectations-0.8.4
 mcabal:     Building library hspec-expectations
+mcabal:     Installing library hspec-expectations
+mcabal:   Return to building target
+mcabal:     Build package quickcheck-io
+mcabal:     Running 'fetch quickcheck-io'
+mcabal:     Building in /db/packages/quickcheck-io-0.2.0
+mcabal:     Building library quickcheck-io
+mcabal:     Installing library quickcheck-io
+mcabal:   Return to building target
 FAILED: hspec
 
 === collecting package DB files ===
 
 === output ===
-    208218  HUnit-1.6.2.0.pkg
+    207742  HUnit-1.6.2.0.pkg
     497229  QuickCheck-2.18.0.0.pkg
     192650  ansi-terminal-1.1.5.pkg
     194368  ansi-terminal-types-1.1.3.pkg
     221157  array-mhs-0.5.8.0.pkg
     817973  base-0.16.6.0.pkg
-      8953  build.log
-    181099  call-stack-0.4.0.pkg
+     10506  build.log
+    181304  call-stack-0.4.0.pkg
     231904  colour-2.3.7.pkg
     480013  containers-0.8.pkg
     276822  exceptions-0.10.11.pkg
     303965  filepath-1.5.5.0.pkg
     244188  ghc-compat-0.5.11.0.pkg
     231592  haskell-lexer-1.2.1.pkg
+    194572  hspec-expectations-0.8.4.pkg
         24  mhs-0.16.6.0/Control/Applicative/Backwards.txt
         24  mhs-0.16.6.0/Control/Applicative/Lift.txt
         13  mhs-0.16.6.0/Control/Monad/Accum.txt
@@ -413,6 +340,8 @@ FAILED: hspec
         17  mhs-0.16.6.0/Test/HUnit/Lang.txt
         17  mhs-0.16.6.0/Test/HUnit/Terminal.txt
         17  mhs-0.16.6.0/Test/HUnit/Text.txt
+        28  mhs-0.16.6.0/Test/Hspec/Expectations.txt
+        28  mhs-0.16.6.0/Test/Hspec/Expectations/Contrib.txt
         23  mhs-0.16.6.0/Test/QuickCheck.txt
         23  mhs-0.16.6.0/Test/QuickCheck/Arbitrary.txt
         23  mhs-0.16.6.0/Test/QuickCheck/Compat.txt
@@ -421,6 +350,7 @@ FAILED: hspec
         23  mhs-0.16.6.0/Test/QuickCheck/Function.txt
         23  mhs-0.16.6.0/Test/QuickCheck/Gen.txt
         23  mhs-0.16.6.0/Test/QuickCheck/Gen/Unsafe.txt
+        23  mhs-0.16.6.0/Test/QuickCheck/IO.txt
         23  mhs-0.16.6.0/Test/QuickCheck/Modifiers.txt
         23  mhs-0.16.6.0/Test/QuickCheck/Monadic.txt
         23  mhs-0.16.6.0/Test/QuickCheck/Monoids.txt
@@ -433,9 +363,13 @@ FAILED: hspec
     259214  mtl-2.3.2.pkg
     312236  os-string-2.0.10.pkg
      96052  packages.txt
+    384951  quickcheck-io-0.2.0.pkg
     340079  random-mhs-1.3.2.2.pkg
     208705  splitmix-0.1.3.2.pkg
     305131  time-1.15.pkg
     279699  transformers-0.6.2.0.pkg
+
+=== dumping package dependencies ===
+deps dumped for 41 packages
 
 === done ===

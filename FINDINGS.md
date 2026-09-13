@@ -205,27 +205,48 @@ Effectively out of scope:
 
 ## Bundle additions (implemented)
 
-### 1. Runtime package loading — `Data.Map`, `mtl`, `Data.Array`, …
+### 1. Runtime package loading — lazy, on demand
 
 Adding packages does **not** require rebuilding the wasm (which would need Emscripten). The
-bundle already embeds `base` + `canvhs`; extra packages can be loaded at runtime instead:
+bundle embeds `base` + `canvhs`; other packages are MicroHs packages loaded at runtime:
 
-- fetch a package DB into the virtual FS, then add it to the compiler's search path with
-  `-a/pkgs` (MicroHs's `-aPATH` appends to the package path);
-- DB layout (from `src/MicroHs/Package.hs`): `packages/<name>.pkg` plus one `<Module>.txt`
-  per exported module containing the pkg file name (e.g. `Data/Map.txt` → `containers-0.7.pkg`).
+- package files are written into the virtual FS and `-a/pkgs` adds that directory to the
+  compiler's search path (`-aPATH` *appends* to the package path);
+- DB layout (from `src/MicroHs/Package.hs`): `packages/<name>.pkg`, plus a `<Module>.txt`
+  map per exported module containing the package file name.
 
-Implemented in `public/repl-runner.js` (`loadPackages()` + `boot()`), documented in
-`public/pkgs/packages/README.txt`, file list in `public/pkgs/index.json`.
+Everything is driven by a manifest, `public/pkgs/index.json`:
 
-**Verified:** the compiler reports
-
-```
-package path=["./../mhs-0.16.6.0","/pkgs"]
+```json
+{ "modules":  { "Data.Map": "containers-0.8.pkg", ... },
+  "packages": { "containers-0.8.pkg": ["array-mhs-0.5.8.0.pkg"], ... } }
 ```
 
-so the extra search path is live and consulted; `import Data.Map` still says
-`Module not found` only because no `containers` package file exists yet.
+`public/packages.js` resolves the program's `import` lines to packages and closes over
+`packages` dependencies; only those `.pkg` files are fetched, and the `<Module>.txt` maps are
+**synthesised from the manifest** rather than shipped as 166 tiny files. A legacy flat file
+list is still understood (and simply disables lazy loading).
+
+Because the package path is fixed at boot, a program needing a package that is not loaded
+causes a reload: the runner returns `{reload: true, needsPackages: […]}` with nothing executed,
+the page persists the source plus the enlarged package set and reloads, and boots straight
+into the run. The set is a **monotonic union**, so alternating between programs does not
+thrash. The worker engine instead discards and respawns the worker, which boots with the new
+set (no page reload) — its package plumbing works, though the worker engine itself is still
+unreliable for the reason noted above.
+
+**Verified in Chrome** (fresh `localStorage` each time):
+
+| program | packages loaded |
+| --- | --- |
+| `print (sum [1..10])` | **0** — nothing fetched |
+| `import qualified Data.Map` | 2 — `containers-0.8`, `array-mhs-0.5.8.0` |
+| `import Control.Monad.State` | 2 — `mtl-2.3.2`, `transformers-0.6.2.0` |
+| `import Test.QuickCheck` (and use it) | 9 — QuickCheck, random-mhs, splitmix, time, mtl, transformers, containers, array-mhs, ghc-compat |
+
+each producing the right output, and `persistedPackages()` matching `state.loaded`. A
+Prelude-only run now boots in ~4.2 s against ~12.5 s when every package was preloaded, and
+`public/pkgs/` is **12 files (11 `.pkg` + manifest)** instead of 178.
 
 ### 2. Usable compile diagnostics
 
@@ -277,12 +298,14 @@ build the self-hosted `mhs` → build `mcabal` → build `cpphs` → install `ba
 `array transformers mtl containers random time HUnit QuickCheck hspec` (each with `-r` for
 dependencies) → emit the DB. The DB is kept between runs (mount `/db`), so re-runs only build
 what is missing.
-Gotchas encoded in the script: `-P<name>` must be joined (`-Pbase-0.16.6.0`, no space); flags
-must precede the `install` command and mcabal takes one package at a time; `curl` must be
-present (mcabal shells out to it for the Stackage snapshot); `packageDbPath` in the generated
-`mhs.conf` must point at the DB, otherwise dependency packages fail with *"Module not found:
-Prelude"*; and QuickCheck must come from git (`--git=…/nick8325/quickcheck.git`), since the
-Hackage release fails to compile.
+Gotchas encoded in the script: `-P<name>` and `-L<name>` must be **joined** to their value
+(a bare `-L` silently lists every installed package, which is how the first dependency dump
+came out empty); flags must precede the `install` command and mcabal takes one package at a
+time; `curl` must be present (mcabal shells out to it for the Stackage snapshot);
+`packageDbPath` in the generated `mhs.conf` must point at the DB, otherwise dependency packages
+fail with *"Module not found: Prelude"*; QuickCheck must come from git
+(`--git=…/nick8325/quickcheck.git`), since the Hackage release fails to compile; and
+`call-stack` needs `--options=-D__GLASGOW_HASKELL__=990` for hspec's benefit (see below).
 
 Produced (MicroHs 0.16.6.0, combinator file v8.4 — matching the bundle exactly):
 
@@ -322,20 +345,23 @@ Two caveats found here:
   not compile at all (`Test/QuickCheck/Exception.hs:59: kind error: cannot unify Type and
   _a6 -> _a7`), so the build mirrors MicroHs's `Makefile.packages` and takes QuickCheck from
   `git://github.com/nick8325/quickcheck.git` (2.18.0.0).
-- **`hspec` does not build.** `hspec-expectations-0.8.4` fails with
-  `Test/Hspec/Expectations.hs:65: not exported: HasCallStack` — the `HasCallStack` type from
-  `GHC.Stack` is not provided by `ghc-compat` (MicroHs has no implicit call-stack support).
-  `HUnit` and `QuickCheck` cover the testing use case; enabling hspec would mean adding a
-  stub `HasCallStack` to ghc-compat, i.e. patching a third-party shim.
+- **`hspec` still does not build, but the blocker moved.** The `HasCallStack` failure was *not*
+  a missing stub: `call-stack`'s `Data.CallStack` guards the `HasCallStack` export behind
+  `#if __GLASGOW_HASKELL__ >= 704`, which CPP does not define under MicroHs, so the module
+  compiled **without exporting it**. Rebuilding just that package with
+  `--options=-D__GLASGOW_HASKELL__=990` restores the GHC code path (`ghc-compat` already
+  provides `GHC.Stack.HasCallStack`), and `hspec-expectations` + `quickcheck-io` now build.
+  `hspec` then fails one level up, in `hspec-core`, which imports `Control.Concurrent.Async` —
+  and mcabal cannot fetch the `async` package (`error: no PKG.cabal file`). So `HUnit` and
+  `QuickCheck` remain the usable testing frameworks.
 
-Note that boot cost grows with the package set: 177 files / 3.08 MB are fetched on every
-boot (≈12 s including compile for the QuickCheck run above). Loading packages on demand — the
-module maps and `import` lines already give the information needed — is the obvious next step
-if the set keeps growing.
+Boot cost no longer scales with the package set: nothing is fetched until a program imports
+something that lives in a package, and then only that package plus its MicroHs dependencies.
+A Prelude-only run fetches nothing and boots in ~4.2 s (against ~12.5 s when everything was
+preloaded eagerly). See "Runtime package loading — lazy, on demand" above.
 
-**Verified in Chrome** — the harness loads the DB (`loaded 127 package file(s)`), the runtime
-reports `Loading package /pkgs/packages/containers-0.8.pkg`, and a program using all three
-families runs correctly:
+**Verified in Chrome** — the runtime reports `Loading package /pkgs/packages/containers-0.8.pkg`,
+and a program using several package families runs correctly:
 
 ```haskell
 import qualified Data.Map as M
@@ -348,8 +374,9 @@ import Control.Monad.State
 A probe of the 15 previously-missing modules (`Data.Sequence`, `Data.IntMap`,
 `Data.Map.Strict/Lazy`, `Control.Monad.Reader/Writer/Except/RWS`, `Control.Monad.Trans.State`,
 `Data.Array.ST/IO`, `Data.Tree`, `Data.Graph`, `Data.IntSet`, `Data.Functor.Identity`) now
-reports **OK** for all of them. Adding a package is therefore: build its `.pkg`, drop it and
-its module maps in `public/pkgs/`, and add them to `index.json` — the wasm is untouched.
+reports **OK** for all of them. Adding a package is therefore: build its `.pkg`, drop it in
+`public/pkgs/packages/`, and regenerate `index.json` with `scripts/build-manifest.ps1` — the
+wasm is untouched and nothing else needs changing.
 
 #### Provenance — real packages vs MicroHs forks
 
@@ -411,26 +438,27 @@ build-and-release task (GHC + Emscripten + MicroHs bootstrap), not a spike.
 ## Layout
 
 ```
-public/index.html            harness UI (source, input, engine/mode/timeout, canvas, log)
-public/repl-runner.js        main-thread REPL driver (verified in Chrome)
-public/worker-runner.js      worker client with boot+run timeout (worker itself unreliable)
-public/haskell-worker.js     worker-side REPL driver + diagnostics
-public/canvhs-glue.js        Graphics.CanvHs JS glue (canvas, rAF, Web Audio)
-public/mhs/                  pinned bundle + VERSION.md
-public/pkgs/                  runtime package DB (3.08 MB, 177 files): packages/*.pkg
-                               + <Module>.txt maps for containers, QuickCheck, random,
-                               time, transformers, mtl, ghc-compat, array, splitmix,
-                               HUnit, call-stack
-scripts/build-packages-linux.sh   builds those .pkg files (Docker/Ubuntu; see above)
-scripts/node-repl-run.js     Node REPL driver — reproduces the browser protocol headlessly
-scripts/node-test.js         headless suite (5/5 passing)
-scripts/feature-probe.js     language-feature matrix (21/26) — `node scripts/feature-probe.js`
-scripts/probe-stdin.js       demonstrates that program stdin is dead (EOF)
-scripts/node-run.js          Node probe for the batch/argv paths (documents inertness)
+public/index.html              harness UI (source, input, engine/mode/timeout, canvas, log)
+public/repl-runner.js          main-thread REPL driver (verified in Chrome)
+public/packages.js             manifest fetch + lazy package resolution (window & worker)
+public/worker-runner.js        worker client with boot+run timeout (worker itself unreliable)
+public/haskell-worker.js       worker-side REPL driver + diagnostics
+public/canvhs-glue.js          Graphics.Canvhs JS glue (canvas, rAF, Web Audio)
+public/mhs/                    pinned bundle + VERSION.md
+public/pkgs/                   11 packages + index.json manifest (3.09 MB, 12 files)
+scripts/build-packages-linux.sh   builds the .pkg files (Docker/Ubuntu; see above)
+scripts/build-manifest.ps1        generates public/pkgs/index.json from a build
+scripts/dump-deps.sh              dumps package dependencies (`-L` joined!)
+scripts/probe-stdin.js            demonstrates that program stdin is dead (EOF)
+scripts/node-repl-run.js          Node REPL driver — same protocol, headlessly
+scripts/node-test.js              headless suite (5/5 passing)
+scripts/feature-probe.js          language-feature matrix (21/26)
+scripts/node-run.js               Node probe for the batch/argv paths (documents inertness)
+scripts/debug-packages.sh         one-off: how to read package metadata
 scripts/build-microhs-packages.ps1  Windows/mingw attempt (MSVC needed; see above)
-serve.js                     zero-dependency static server (node serve.js [port])
-canvhs-proof.png             screenshot: Graphics.CanvHs drawing in Chrome
-hello.hs                     sample program
+serve.js                       zero-dependency static server (node serve.js [port])
+canvhs-proof.png               screenshot: Graphics.Canvhs drawing in Chrome
+hello.hs                       sample program
 ```
 
 Module inventory (embedded modules):
