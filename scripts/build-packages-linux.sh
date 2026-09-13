@@ -24,7 +24,7 @@ DB=${DB:-/db}
 # Packages to build. `base` is embedded in the browser bundle, so it is not shipped.
 # MicroCabal substitutes a few names (array -> array-mhs, random -> random-mhs) and
 # injects ghc-compat into every third-party package.
-PACKAGES=${PACKAGES:-"array transformers mtl containers random time HUnit QuickCheck hspec"}
+PACKAGES=${PACKAGES:-"array transformers mtl containers random time unordered-containers async HUnit QuickCheck hspec"}
 
 mkdir -p "$WORK" "$OUT" "$DB"
 # Clear stale artifacts, but keep an existing package DB so re-runs only build what

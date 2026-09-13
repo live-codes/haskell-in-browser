@@ -1,0 +1,69 @@
+=== 1. unordered-containers (async's dependency) ===
+Installing package dist-mcabal/unordered-containers-0.2.21.pkg in /db/mhs-0.16.6.0
+mcabal: Build package unordered-containers
+mcabal: Running 'fetch unordered-containers'
+mcabal: Building in /db/packages/unordered-containers-0.2.21
+mcabal: Building library unordered-containers
+mcabal: Installing library unordered-containers
+unordered-containers: ok
+
+=== 2. async ===
+Installing package dist-mcabal/async-2.2.6.pkg in /db/mhs-0.16.6.0
+mcabal: Build package async
+mcabal: Building in /db/packages/async-2.2.6
+mcabal: Building library async
+mcabal: Installing library async
+async: ok
+
+=== 3. hspec ===
+Changing package array to array-mhs
+Changing package random to random-mhs
+Installing package dist-mcabal/hspec-core-2.11.17.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/hspec-discover-2.11.17.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/hspec-2.11.17.pkg in /db/mhs-0.16.6.0
+mcabal: Build package hspec
+mcabal: Building in /db/packages/hspec-2.11.17
+mcabal: Building library hspec
+mcabal:   Build package hspec-core
+mcabal:   Building in /db/packages/hspec-core-2.11.17
+mcabal:   Building library hspec-core
+mcabal:   Installing library hspec-core
+mcabal: Return to building target
+mcabal:   Build package hspec-discover
+mcabal:   Running 'fetch hspec-discover'
+mcabal:   Building in /db/packages/hspec-discover-2.11.17
+mcabal:   Building library hspec-discover
+mcabal:   Installing library hspec-discover
+mcabal: Return to building target
+mcabal: Installing library hspec
+hspec: ok
+
+=== 4. packages in the DB ===
+HUnit-1.6.2.0.pkg
+QuickCheck-2.18.0.0.pkg
+ansi-terminal-1.1.5.pkg
+ansi-terminal-types-1.1.3.pkg
+array-mhs-0.5.8.0.pkg
+async-2.2.6.pkg
+base-0.16.6.0.pkg
+call-stack-0.4.0.pkg
+colour-2.3.7
+colour-2.3.7.pkg
+containers-0.8.pkg
+exceptions-0.10.11.pkg
+filepath-1.5.5.0.pkg
+ghc-compat-0.5.11.0.pkg
+haskell-lexer-1.2.1.pkg
+hspec-2.11.17.pkg
+hspec-core-2.11.17.pkg
+hspec-discover-2.11.17.pkg
+hspec-expectations-0.8.4.pkg
+mtl-2.3.2.pkg
+os-string-2.0.10.pkg
+quickcheck-io-0.2.0.pkg
+random-mhs-1.3.2.2.pkg
+splitmix-0.1.3.2.pkg
+time-1.15
+time-1.15.pkg
+transformers-0.6.2.0.pkg
+unordered-containers-0.2.21.pkg

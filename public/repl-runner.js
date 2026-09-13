@@ -21,6 +21,13 @@ const PROMPT = '<<<LC_PROMPT>>>';
 const PKG_DIR = '/pkgs';
 const PERSIST_KEY = 'mhs.packages';
 
+// Program output arrives as UTF-8 bytes, one char code at a time; a streaming
+// decoder keeps multi-byte characters (e.g. hspec's check mark) intact.
+const outDecoder = new TextDecoder('utf-8', { fatal: false });
+function appendCode(code) {
+  state.raw += outDecoder.decode(new Uint8Array([code]), { stream: true });
+}
+
 const state = {
   raw: '',
   ready: false,
@@ -166,11 +173,43 @@ async function typeLine(text) {
   }
 }
 
+/** Apply backspaces the way a terminal would (delete the previous character). */
+function applyBackspaces(text) {
+  let out = '';
+  for (const ch of text) {
+    if (ch === '\b') out = out.slice(0, -1);
+    else out += ch;
+  }
+  return out;
+}
+
+/**
+ * Collapse carriage-return overwrites: progress lines like "adds [ ]\radds [x]"
+ * should keep only the final state, as a terminal would show.
+ */
+function applyCarriageReturns(text) {
+  return text
+    .split('\n')
+    .map((line) => {
+      const i = line.lastIndexOf('\r');
+      return i >= 0 ? line.slice(i + 1) : line;
+    })
+    .join('\n');
+}
+
 /** Remove prompts, ANSI escapes, echoed input lines and the startup banner. */
 function clean(text, sentLines) {
   const noPrompts = text.split(PROMPT).join('');
-  // eslint-disable-next-line no-control-regex
-  const noAnsi = noPrompts.replace(/\u001b\[[0-9;]*[A-Za-z]/g, '');
+  // Strip ANSI/VT control sequences (hspec uses cursor control) — they cannot
+  // render in a <pre>, and they would also confuse output comparison.
+  const noAnsi = applyCarriageReturns(
+    applyBackspaces(
+      noPrompts
+        // eslint-disable-next-line no-control-regex
+        .replace(/\u001b\[[0-9;?]*[A-Za-z]|\u001b[@-Z\\-_]|\u001b\([A-Za-z0-9]/g, '')
+        .replace(/\u0007/g, ''),
+    ),
+  );
   const banner = [
     /^Welcome to interactive MicroHs/,
     /^Integer implemented with imath/,
@@ -258,8 +297,8 @@ async function boot() {
       // initRuntime() calls FS.init() with no arguments, which takes these.
       // Input never uses fd 0: it is delivered with _set_input_char.
       stdin: () => null,
-      stdout: (code) => code !== null && (state.raw += String.fromCharCode(code)),
-      stderr: (code) => code !== null && (state.raw += String.fromCharCode(code)),
+      stdout: (code) => code !== null && appendCode(code),
+      stderr: (code) => code !== null && appendCode(code),
       print: (text) => {
         state.raw += String(text) + '\n';
       },

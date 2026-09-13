@@ -32,6 +32,13 @@ function wlog(message) {
   self.postMessage({ type: 'log', message: String(message) });
 }
 
+// UTF-8 bytes arrive one char code at a time; a streaming decoder keeps multi-byte
+// characters intact.
+const outDecoder = new TextDecoder('utf-8', { fatal: false });
+function appendByte(code) {
+  raw += outDecoder.decode(new Uint8Array([code]), { stream: true });
+}
+
 // Same lazy package resolution as the main-thread runner.
 importScripts('packages.js');
 
@@ -133,6 +140,9 @@ function stripNoise(text, sentLines) {
   return text
     .split(PROMPT)
     .join('')
+    // eslint-disable-next-line no-control-regex
+    .replace(/\u001b\[[0-9;?]*[A-Za-z]|\u001b[@-Z\\-_]|\u001b\([A-Za-z0-9]/g, '')
+    .replace(/\u0007/g, '')
     .replace(/^> ?/gm, '')
     .split('\n')
     .filter((line) => {
@@ -204,12 +214,12 @@ function boot() {
     stdout: (code) => {
       if (code === null) return;
       nStdout++;
-      raw += String.fromCharCode(code);
+      appendByte(code);
     },
     stderr: (code) => {
       if (code === null) return;
       nStdout++;
-      raw += String.fromCharCode(code);
+      appendByte(code);
     },
     print: (text) => {
       nPrint++;

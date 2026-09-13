@@ -33,7 +33,7 @@ filtered out of the manifest.
 1. Build it (see `../../scripts/build-packages-linux.sh`) — it must come from the same MicroHs
    version as the bundle, or its packages will not deserialize.
 2. Copy `<name>.pkg` into `packages/`.
-3. Regenerate the manifest: `powershell -File scripts/build-manifest.ps1`.
+3. Regenerate the manifest: `node scripts/build-manifest.js`.
    It reads the build's module maps and `deps.txt`. Note that `mhs` joins `-L` and `-P` to
    their arguments (`-L<path>`), which is how `deps.txt` is produced.
 

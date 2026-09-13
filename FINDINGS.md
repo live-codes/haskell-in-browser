@@ -142,12 +142,10 @@ Originally missing, now **shipped as runtime packages** (verified importable):
 below; this raised probed availability from 76/97 to **93/97**.
 
 Still missing (verified "Module not found"): `Text.Parsec`, `Text.Megaparsec`;
-`Test.Hspec`; `Data.Vector`, `Control.Lens`, `Data.Aeson`.
+`Data.Vector`, `Control.Lens`, `Data.Aeson`.
 
-`parsec`, `vector` and `aeson` build with MicroHs (`Makefile.packages` lists parsec, heaps,
-fingertree, fgl, …), so those are the same packaging step rather than a compiler limitation.
-`hspec` is a genuine exception: it needs `HasCallStack` from `GHC.Stack`, which `ghc-compat`
-does not provide (see below).
+Those all build with MicroHs (`Makefile.packages` lists parsec, heaps, fingertree, fgl, …), so
+they are the same packaging step rather than a compiler limitation.
 
 Also from the wiki's compliance table, even "present" modules are incomplete in places:
 `System.IO` lacks `hSeek`/`hTell`/`hIsEOF`/`hPrint`/`HandlePosn`/`SeekMode`;
@@ -164,9 +162,9 @@ Mostly no, with three real caveats:
    `Module not found: Data.Map`), but there is no GHC-quality type-error explanation.
    The FAQ's answer — *"Why are the error messages so bad? Error messages are boring."* —
    is a design stance. For someone learning types, this is the biggest drawback.
-2. **Testing is partly covered:** `HUnit` and `QuickCheck` work (QuickCheck needs `maxSuccess`
-   lowered — the default 100 traps the wasm at ~74 tests). `hspec` does not build because
-   `ghc-compat` lacks `HasCallStack`.
+2. **Testing works, with one caveat:** `HUnit`, `QuickCheck` and `hspec` all run. QuickCheck's
+   default 100 tests trap the wasm at ~74, so tests need `maxSuccess`/`withMaxSuccess` lowered;
+   hspec's `property` examples inherit that.
 3. **Weak safety net:** things that should be errors often are not, so a learner gets
    less feedback than GHC would give.
 
@@ -273,6 +271,22 @@ lcInputWords :: [String]
 Appended at the end of the module, so it needs no imports and cannot clash with the header.
 Wired to the harness's input box and verified (`1 2 3 4 5` → `15`).
 
+### 4. Readable program output
+
+Output arrives as UTF-8 bytes one char code at a time, and libraries like hspec drive the
+terminal. The runner now decodes through a streaming `TextDecoder` (so `✔` is not mangled into
+`￢ﾜﾔ`), strips ANSI/VT escape sequences and BEL, honours backspaces, and collapses
+carriage-return overwrites so a progress line keeps only its final state. hspec renders as:
+
+```
+arithmetic
+  adds [✔]
+  subtracts [✔]
+
+Finished in 2.0000 seconds
+2 examples, 0 failures
+```
+
 ### Building the package files — done
 
 Generating packages needs MicroHs to compile them. Two dead ends first:
@@ -309,23 +323,19 @@ fail with *"Module not found: Prelude"*; QuickCheck must come from git
 
 Produced (MicroHs 0.16.6.0, combinator file v8.4 — matching the bundle exactly):
 
-| package | size | |
-| --- | --- | --- |
-| `containers-0.8.pkg` | 480,013 B | real upstream — `Data.Map`/`Set`/`Sequence` |
-| `QuickCheck-2.18.0.0.pkg` | 497,229 B | real upstream, built from **git** (see below) |
-| `random-mhs-1.3.2.2.pkg` | 340,079 B | MicroHs fork — `System.Random` |
-| `time-1.15.pkg` | 305,131 B | real upstream — `Data.Time` |
-| `transformers-0.6.2.0.pkg` | 279,699 B | real upstream |
-| `mtl-2.3.2.pkg` | 259,214 B | real upstream — `Control.Monad.State` etc. |
-| `ghc-compat-0.5.11.0.pkg` | 244,188 B | shim, injected into every package |
-| `array-mhs-0.5.8.0.pkg` | 221,157 B | MicroHs fork — `Data.Array` |
-| `splitmix-0.1.3.2.pkg` | 208,705 B | dependency of `random-mhs` |
-| `HUnit-1.6.2.0.pkg` | 208,218 B | real upstream — `Test.HUnit` |
-| `call-stack-0.4.0.pkg` | 181,099 B | dependency of `HUnit` |
-| `base-0.16.6.0.pkg` | 817,973 B | **not shipped** — base is embedded in the wasm |
+**25 packages ship** (`public/pkgs/packages/`), totalling 7.2 MB, plus the `index.json`
+manifest — 26 files. Nothing is fetched until a program imports something from them (see the
+lazy-loading section below). Grouped by purpose:
 
-The 11 shipped packages plus 166 module maps total **3.08 MB**, live in `public/pkgs/`
-(`packages/*.pkg` + `<Module>.txt`) and are listed in `public/pkgs/index.json` (177 entries).
+| group | packages |
+| --- | --- |
+| containers / data | `containers-0.8`, `array-mhs-0.5.8.0`, `unordered-containers-0.2.21` |
+| effects | `transformers-0.6.2.0`, `mtl-2.3.2`, `exceptions-0.10.11` |
+| random / time | `random-mhs-1.3.2.2`, `splitmix-0.1.3.2`, `time-1.15` |
+| testing | `hspec-2.11.17`, `hspec-core-2.11.17`, `hspec-expectations-0.8.4`, `hspec-discover-2.11.17`, `QuickCheck-2.18.0.0`, `quickcheck-io-0.2.0`, `HUnit-1.6.2.0`, `call-stack-0.4.0` |
+| concurrency | `async-2.2.6` |
+| deps pulled in | `ansi-terminal-1.1.5`, `ansi-terminal-types-1.1.3`, `colour-2.3.7`, `filepath-1.5.5.0`, `os-string-2.0.10`, `haskell-lexer-1.2.1`, `ghc-compat-0.5.11.0` |
+| — | `base-0.16.6.0` — **not shipped**; base is embedded in the wasm |
 
 **Verified in Chrome** (each loads its package then runs):
 
@@ -345,15 +355,34 @@ Two caveats found here:
   not compile at all (`Test/QuickCheck/Exception.hs:59: kind error: cannot unify Type and
   _a6 -> _a7`), so the build mirrors MicroHs's `Makefile.packages` and takes QuickCheck from
   `git://github.com/nick8325/quickcheck.git` (2.18.0.0).
-- **`hspec` still does not build, but the blocker moved.** The `HasCallStack` failure was *not*
-  a missing stub: `call-stack`'s `Data.CallStack` guards the `HasCallStack` export behind
+- **`hspec` works** (once `async` is installed — see the note above). The `HasCallStack` failure
+  was *not* a missing stub: `call-stack`'s `Data.CallStack` guards that export behind
   `#if __GLASGOW_HASKELL__ >= 704`, which CPP does not define under MicroHs, so the module
   compiled **without exporting it**. Rebuilding just that package with
   `--options=-D__GLASGOW_HASKELL__=990` restores the GHC code path (`ghc-compat` already
-  provides `GHC.Stack.HasCallStack`), and `hspec-expectations` + `quickcheck-io` now build.
-  `hspec` then fails one level up, in `hspec-core`, which imports `Control.Concurrent.Async` —
-  and mcabal cannot fetch the `async` package (`error: no PKG.cabal file`). So `HUnit` and
-  `QuickCheck` remain the usable testing frameworks.
+  provides `GHC.Stack.HasCallStack`), and `hspec-expectations` + `quickcheck-io` build.
+  `hspec-core` then needs `Control.Concurrent.Async`, i.e. the `async` package, which in turn
+  needs `unordered-containers` — both are in the build list now.
+
+  Verified in Chrome:
+
+  ```
+  arithmetic
+    adds [✔]
+    subtracts [✔]
+
+  Finished in 2.0000 seconds
+  2 examples, 0 failures
+  ```
+
+  Caveat: hspec's `it … $ property …` inherits QuickCheck's default 100 tests and therefore
+  hits the same wasm trap; use `withMaxSuccess n` there too.
+
+- **Two more gotchas found while wiring hspec up.** (1) `curl` must exist in the image: mcabal
+  shells out to it for every tarball, and a missing curl surfaces misleadingly as
+  *"no PKG.cabal file"* with an empty package directory. (2) `async` is not pulled in by
+  hspec's `-r` recursion reliably, so `unordered-containers` and `async` are now listed
+  explicitly before `hspec`.
 
 Boot cost no longer scales with the package set: nothing is fetched until a program imports
 something that lives in a package, and then only that package plus its MicroHs dependencies.
@@ -445,10 +474,12 @@ public/worker-runner.js        worker client with boot+run timeout (worker itsel
 public/haskell-worker.js       worker-side REPL driver + diagnostics
 public/canvhs-glue.js          Graphics.Canvhs JS glue (canvas, rAF, Web Audio)
 public/mhs/                    pinned bundle + VERSION.md
-public/pkgs/                   11 packages + index.json manifest (3.09 MB, 12 files)
+public/pkgs/                   25 packages + index.json manifest (7.2 MB, 26 files)
 scripts/build-packages-linux.sh   builds the .pkg files (Docker/Ubuntu; see above)
-scripts/build-manifest.ps1        generates public/pkgs/index.json from a build
+scripts/build-manifest.js         generates public/pkgs/index.json from a build (Node —
+                                  PowerShell's ConvertTo-Json mangles arrays)
 scripts/dump-deps.sh              dumps package dependencies (`-L` joined!)
+scripts/get-async.sh              installs unordered-containers + async + hspec
 scripts/probe-stdin.js            demonstrates that program stdin is dead (EOF)
 scripts/node-repl-run.js          Node REPL driver — same protocol, headlessly
 scripts/node-test.js              headless suite (5/5 passing)
