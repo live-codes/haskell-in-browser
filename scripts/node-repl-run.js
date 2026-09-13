@@ -1,19 +1,20 @@
 'use strict';
 
 /**
- * Drive the MicroHs interactive REPL to run one Haskell program.
+ * Drive the MicroHs interactive REPL.
  *
+ * The published bundle cannot compile-and-run in batch mode (`-r`/`-e` are
+ * inert: `compiledWithMhs` is false), so the REPL is the only execution path.
  * Protocol (mirrors web-mhs, verified empirically):
- *   - the REPL is the only execution path in this build (`-r`/`-e` are inert),
- *   - input is delivered with Module._set_input_char, one char at a time,
- *     interleaved with the event loop,
+ *   - input is delivered with Module._set_input_char, interleaved with the loop,
  *   - `.mhsi_rc` sets a sentinel prompt so completion is detectable,
- *   - a program is run with `import Main` then `:main`,
- *   - the REPL echoes typed input, so echoed lines are stripped from output.
+ *   - a program runs via `import Main` -> `:reload` -> `:main`,
+ *   - the REPL echoes typed input, so echoed lines are stripped.
  *
- * One program per process: the REPL is a persistent, stateful process.
- *
- * CLI: node node-repl-run.js --file Main.hs [--stdin TEXT] [--timeout MS] [--dump]
+ * CLI:
+ *   node node-repl-run.js --file Main.hs [--dump]
+ *   node node-repl-run.js --mode eval --expr 'map (+1) [1..5]'
+ *   node node-repl-run.js --probe-imports Data.Map,Data.Set,control...
  */
 
 const path = require('path');
@@ -24,7 +25,7 @@ const HOME = '/home/web_user';
 const PROMPT = '<<<LC_PROMPT>>>';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const dec = new TextDecoder('utf-8', { fatal: false });
+const decoder = new TextDecoder('utf-8', { fatal: false });
 
 function countOccurrences(hay, needle) {
   let n = 0;
@@ -34,6 +35,29 @@ function countOccurrences(hay, needle) {
     i += needle.length;
   }
   return n;
+}
+
+/** Strip prompts, ANSI escapes, echoed input and the startup banner. */
+function clean(text, sentLines) {
+  const banner = [
+    /^Welcome to interactive MicroHs/,
+    /^Integer implemented with imath/,
+    /^Loading embedded package /,
+    /^Type ':quit' to quit/,
+    /^loaded /,
+  ];
+  return text
+    .split(PROMPT)
+    .join('')
+    .replace(/^> ?/gm, '')
+    .split('\n')
+    .filter((line) => {
+      const t = line.trim();
+      if (banner.some((re) => re.test(t))) return false;
+      if (sentLines.some((s) => t === s)) return false;
+      return true;
+    })
+    .join('\n');
 }
 
 /** Split REPL chatter into program output and error lines. */
@@ -59,33 +83,28 @@ function classify(text) {
   };
 }
 
-async function runRepl(options) {
-  const opts = options || {};
-  const source = String(opts.source || '');
-  const stdinText = String(opts.stdin || '');
-  const charDelay = opts.charDelay == null ? 2 : opts.charDelay;
-  const stepTimeout = opts.timeout || 30000;
+/** Boot the REPL and return a session handle. */
+async function startRepl(opts) {
+  const options = opts || {};
+  const charDelay = options.charDelay == null ? 2 : options.charDelay;
+  const stepTimeout = options.timeout || 60000;
 
-  // Interactive: no module args -> the REPL starts.
-  process.argv = [process.argv[0], process.argv[1]];
+  process.argv = [process.argv[0], process.argv[1]]; // no module args => REPL
 
-  const raw = { text: '' };
-  let exited = false;
-  let exitCode = null;
+  const state = { raw: '', exited: false, exitCode: null };
 
   delete require.cache[require.resolve(MHS_JS)];
   const m = require(MHS_JS);
 
   m.locateFile = (p) => path.join(MHS_DIR, p);
-  m.stdout = (code) => code !== null && (raw.text += String.fromCharCode(code));
-  m.stderr = (code) => code !== null && (raw.text += String.fromCharCode(code));
-  m.print = () => {};
-  m.printErr = (text) => {
-    raw.text += String(text) + '\n';
-  };
+  m.stdin = () => null;
+  m.stdout = (code) => code !== null && (state.raw += String.fromCharCode(code));
+  m.stderr = (code) => code !== null && (state.raw += String.fromCharCode(code));
+  m.print = (text) => (state.raw += String(text) + '\n');
+  m.printErr = (text) => (state.raw += String(text) + '\n');
   m.onExit = (code) => {
-    exited = true;
-    exitCode = code;
+    state.exited = true;
+    state.exitCode = code;
   };
   m.preRun = [
     () => {
@@ -97,14 +116,13 @@ async function runRepl(options) {
     },
   ];
 
-  const promptCount = () => countOccurrences(raw.text, PROMPT);
+  const promptCount = () => countOccurrences(state.raw, PROMPT);
 
-  async function waitFor(label, targetCount, extra) {
+  async function waitFor(target, label) {
     const t0 = Date.now();
     while (Date.now() - t0 < stepTimeout) {
-      if (exited) return 'exit';
-      if (promptCount() >= targetCount) return 'prompt';
-      if (extra && extra()) return 'extra';
+      if (state.exited) return;
+      if (promptCount() >= target) return;
       await sleep(15);
     }
     throw new Error('timeout waiting for ' + label);
@@ -118,97 +136,111 @@ async function runRepl(options) {
     }
   }
 
-  function clean(text, sentLines) {
-    const banner = [
-      /^Welcome to interactive MicroHs/,
-      /^Integer implemented with imath/,
-      /^Loading embedded package /,
-      /^Type ':quit' to quit/,
-    ];
-    return text
-      .split(PROMPT)
-      .join('')
-      .replace(/^> ?/gm, '')
-      .split('\n')
-      .filter((line) => {
-        const t = line.trim();
-        if (banner.some((re) => re.test(t))) return false;
-        if (sentLines.some((s) => t === s)) return false;
-        return true;
-      })
-      .join('\n');
+  /** Type a line and return the cleaned output produced for it. */
+  async function step(line) {
+    const baseline = promptCount();
+    const mark = state.raw.length;
+    await typeLine(line);
+    await waitFor(baseline + 1, JSON.stringify(line));
+    return clean(state.raw.slice(mark), [line]);
   }
 
-  // Boot: wait for the first prompt.
-  await waitFor('first prompt', 1);
+  await waitFor(1, 'first prompt');
 
-  const sent = [];
-  let mark;
+  return { state, m, promptCount, waitFor, typeLine, step, clean, classify };
+}
 
+async function runRepl(options) {
+  const opts = options || {};
+  const source = String(opts.source || '');
+  const s = await startRepl(opts);
+
+  let cleaned;
+  let compileOut = '';
   if (opts.mode === 'eval') {
-    const expr = String(opts.expr || '');
-    sent.push(expr);
-    mark = raw.text.length;
-    await typeLine(expr);
-    await waitFor('expression', 2);
+    cleaned = await s.step(String(opts.expr || ''));
   } else {
-    m.FS.writeFile('Main.hs', source);
-
-    sent.push('import Main');
-    await typeLine('import Main');
-    await waitFor('import Main', 2);
-
-    // The REPL caches compiled modules; :reload recompiles from source.
-    sent.push(':reload');
-    await typeLine(':reload');
-    await waitFor(':reload', 3);
-
-    sent.push(':main');
-    mark = raw.text.length;
-    await typeLine(':main');
-    await waitFor(':main', 4);
+    s.m.FS.writeFile('Main.hs', source);
+    // `import Main` triggers compilation, so compile diagnostics appear here;
+    // :reload recompiles from source and :main then reports "undefined value: main".
+    compileOut = await s.step('import Main');
+    compileOut += '\n' + (await s.step(':reload'));
+    cleaned = await s.step(':main');
   }
 
-  const cleaned = clean(raw.text.slice(mark), sent);
-  const { output, error } = classify(cleaned);
-  void stdinText;
+  const mainRes = classify(cleaned);
+  const compileRes = classify(compileOut);
+  // A compile failure is reported by :reload; :main then only says
+  // "undefined value: main", so the compile diagnostic takes precedence.
+  const finalError = compileRes.error || (compileOut.trim() ? compileOut.trim() : null) || mainRes.error;
 
   return {
-    output,
-    error,
-    exitCode: exitCode == null ? 0 : exitCode,
-    raw: opts.dump ? raw.text : undefined,
-    exited,
+    output: mainRes.output,
+    error: finalError,
+    exitCode: s.state.exitCode == null ? 0 : s.state.exitCode,
+    raw: opts.dump ? s.state.raw : undefined,
+    exited: s.state.exited,
   };
 }
 
-module.exports = { runRepl, PROMPT };
+/**
+ * Report which modules resolve in this bundle.
+ * @param {string[]} modules
+ */
+async function probeImports(modules) {
+  const s = await startRepl({});
+  const results = [];
+  for (const name of modules) {
+    const out = await s.step('import ' + name);
+    // Embedded-package modules import silently; only failures print a message.
+    const failed = /Module not found|Exception|error:/.test(out);
+    results.push({
+      module: name,
+      ok: !failed,
+      detail: failed ? out.replace(/^\s+|\s+$/g, '').split('\n')[0] : '',
+    });
+  }
+  return results;
+}
+
+module.exports = { runRepl, probeImports, startRepl, PROMPT };
 
 if (require.main === module) {
   const a = process.argv.slice(2);
-  const args = { file: null, stdin: '', timeout: 30000, dump: false, mode: 'run', expr: '' };
+  const args = { file: null, timeout: 60000, dump: false, mode: 'run', expr: '', probe: null };
   for (let i = 0; i < a.length; i++) {
     if (a[i] === '--file') args.file = a[++i];
-    else if (a[i] === '--stdin') args.stdin = a[++i];
     else if (a[i] === '--timeout') args.timeout = Number(a[++i]);
     else if (a[i] === '--dump') args.dump = true;
     else if (a[i] === '--mode') args.mode = a[++i];
     else if (a[i] === '--expr') args.expr = a[++i];
+    else if (a[i] === '--probe-imports') args.probe = a[++i].split(',').filter(Boolean);
   }
-  const fs = require('fs');
-  const source = args.file ? fs.readFileSync(args.file, 'utf8') : '';
-  runRepl({
-    source,
-    stdin: args.stdin,
-    timeout: args.timeout,
-    dump: args.dump,
-    mode: args.mode,
-    expr: args.expr,
-  })
-    .then((r) => {
-      process.stdout.write(JSON.stringify(r) + '\n');
-      process.exit(0);
-    })
+
+  const done = args.probe
+    ? probeImports(args.probe).then((results) => {
+        for (const r of results) {
+          console.log((r.ok ? 'OK   ' : 'MISS ') + r.module + (r.detail ? '   ' + r.detail : ''));
+        }
+        const ok = results.filter((r) => r.ok).length;
+        console.log(`\n${ok}/${results.length} modules available`);
+      })
+    : (() => {
+        const fs = require('fs');
+        const source = args.file ? fs.readFileSync(args.file, 'utf8') : '';
+        return runRepl({
+          source,
+          timeout: args.timeout,
+          dump: args.dump,
+          mode: args.mode,
+          expr: args.expr,
+        }).then((r) => {
+          process.stdout.write(JSON.stringify(r) + '\n');
+        });
+      })();
+
+  done
+    .then(() => process.exit(0))
     .catch((err) => {
       process.stdout.write(JSON.stringify({ error: String(err && err.message) }) + '\n');
       process.exit(1);

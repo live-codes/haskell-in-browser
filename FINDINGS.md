@@ -87,8 +87,111 @@ Useful REPL commands (from `:help`): `:reload`, `:clear`, `:delete`, `:type`, `:
 | **No interrupt / timeout on the main thread** | An infinite `main` blocks the tab; there is no way to interrupt a running emscripten instance. The worker would have provided this, but is not viable. |
 | **stdin not supported** | The program's own `getLine` is not wired; only REPL commands can be typed. Unverified/unsupported for v1. |
 | **Module caching** | Mitigated by `:reload`, but the REPL remains a stateful, accumulating session. |
-| **Not GHC** | MicroHs is a Haskell 2010 subset (~GHCi performance), with its own error messages (`"Data/List.hs",389:11`). No GHC extensions, no Hackage packages. |
+| **Not GHC** | MicroHs is an extended Haskell 2010 implementation at ~GHCi speed with its own error messages (`"Data/List.hs",389:11`). Many extensions *do* work (GADTs, RankNTypes, TypeApplications, OverloadedStrings, record dot); `TypeFamilies`, Template Haskell and `DeriveGeneric` do not. Packages outside the embedded set are unavailable in the browser (see capability profile). |
 | Browser coverage | Only Chrome was available here; Safari/Firefox/mobile unverified. `web-mhs` has known Safari quirks. |
+
+## Capability profile (what a user actually gets)
+
+Measured against the shipped bundle (base + canvhs embedded). Sources: the
+[MicroHs Wiki "Language" page](https://github.com/augustss/MicroHs/wiki/Language),
+`lib/base.cabal`, and the probes in `scripts/feature-probe.js` / `--probe-imports`.
+
+### Language features — 21/26 verified
+
+| Works | Fails |
+| --- | --- |
+| ADTs + `deriving (Show, Eq, Ord, Enum, Bounded)`, typeclasses + instances | **`TypeFamilies`** (type/data families) |
+| higher-kinded types, `Functor`/`Foldable`/`Traversable` | **Template Haskell / QuasiQuotes** |
+| **GADTs**, **RankNTypes**, **TypeApplications** | **`DeriveGeneric`** (`undefined type: Generic`) |
+| `OverloadedStrings` (+`Data.Text`), `PatternSynonyms`, `LambdaCase` | **`ApplicativeDo`** (do is Monad-only: `Cannot satisfy constraint: Monad Pair`) |
+| `MultiWayIf`, `MultiParamTypeClasses` + `FunctionalDependencies` | `Arrows`/`proc`, `ImplicitParams`, `RebindableSyntax`, unboxed tuples |
+| `ExistentialQuantification`, `DeriveFunctor`, `GeneralisedNewtypeDeriving`, `StandaloneDeriving` | |
+| record dot syntax + nested record update, list comprehensions, laziness, `case`/guards/`where` | |
+| `Control.Monad.ST` + `STRef`, STM, `Control.Concurrent`, `Control.Exception`, `DeepSeq` | |
+
+Wiki-noted differences from Haskell 2010: extensions are **always on** except `CPP`;
+kind variables need an explicit `forall`; no datatype contexts; `BangPatterns` only
+effective at a top-level `let`/`where`; Text I/O is always UTF-8; and **many things
+that should be errors are not reported**.
+
+`TypeFamilies`, Template Haskell and `DeriveGeneric` are the notable modern-GHC
+omissions; everything a typical introductory-to-intermediate course needs is present.
+
+### Library modules — 76/97 probed available
+
+Present: `Prelude`, `Data.List/Maybe/Char/Either/Tuple`, **`Data.Text` (+Lazy, IO,
+Encoding)**, **`Data.ByteString` (+Char8, Lazy, Short, Builder)**, `Data.Ratio`,
+`Data.Complex`, `Data.Bits`, `Data.Ix`, `Data.Foldable/Traversable`, `Data.List.NonEmpty`,
+`Data.Hashable`, `Data.STRef`, `Data.IORef`, `Data.Typeable`, `Data.Data`, `Data.Dynamic`,
+`Data.Coerce`, `Data.Bifunctor`, `Data.String.Interpolate`, `GHC.Generics`,
+`Control.Monad.ST`, `Control.Applicative/Arrow/Category/Exception/DeepSeq/Monad.Fix`,
+`Control.Concurrent(+STM)`, `System.IO/Environment/Exit/Directory/Process/Cmd/Info/Mem/Timeout/CPUTime`,
+`Text.Printf`, `Text.Read`, `Text.ParserCombinators.ReadP`, `Numeric`, `Data.Version`,
+`Debug.Trace`, `Foreign*`, `Unsafe.Coerce`, `Graphics.CanvHs`.
+
+Missing (verified "Module not found"):
+`Data.Map`, `Data.Set`, `Data.Sequence`, `Data.IntMap`, `Data.Tree` (**containers**);
+`Control.Monad.State/Reader/Writer/Except/RWS` (**mtl**);
+`Data.Array*` (**array**); `Text.Parsec`, `Text.Megaparsec`;
+`System.Random`; `Data.Time`; `Test.HUnit`, `Test.QuickCheck`, `Test.Hspec`;
+`Data.Vector`, `Control.Lens`, `Data.Aeson`.
+
+**Important nuance:** those missing packages *do* work with MicroHs locally
+(`Makefile.packages` builds containers, mtl, array, transformers, parsec, QuickCheck,
+HUnit, hspec, random, binary, fingertree, heaps, fgl, …). The gap is only that the
+browser bundle embeds `base` + `canvhs`. Which packages get embedded is a bundling
+decision, so `Data.Map`/`mtl` could be closed at the cost of download size.
+
+Also from the wiki's compliance table, even "present" modules are incomplete in places:
+`System.IO` lacks `hSeek`/`hTell`/`hIsEOF`/`hPrint`/`HandlePosn`/`SeekMode`;
+`Data.Char` lacks `lexLitChar`/`readLitChar`; `Prelude` lacks `catch`; `Foreign.C.String`
+and `Foreign.C.Types` are partial.
+
+### Would a learner miss much?
+
+Mostly no, with three real caveats:
+
+1. **Diagnostics.** Errors are terse and some parse failures carry an *empty* message
+   (`"./Main.hs": line 2, col 13:` for `type family …`). Positional errors are decent
+   (`line 5, col 8: undefined value: T.putStrLn`, `Cannot satisfy constraint: IO ~ Maybe`,
+   `Module not found: Data.Map`), but there is no GHC-quality type-error explanation.
+   The FAQ's answer — *"Why are the error messages so bad? Error messages are boring."* —
+   is a design stance. For someone learning types, this is the biggest drawback.
+2. **Missing tutorial staples:** no `Data.Map`/`Data.Set` (word-count, memoisation,
+   graph examples), no `Control.Monad.State` (monad-transformer chapters), no
+   `hspec`/`HUnit`/`QuickCheck` (testing chapters). All fixable by embedding more packages.
+3. **Weak safety net:** things that should be errors often are not, so a learner gets
+   less feedback than GHC would give.
+
+Beyond that, the language surface is genuinely strong — GADTs, RankNTypes,
+TypeApplications, OverloadedStrings and record dot all work, so even an advanced reader
+("Thinking with Types"-style material) is mostly served.
+
+### Competitive programming?
+
+Effectively out of scope:
+
+- **No stdin.** Verified: the program's own `getLine`/`getContents` cannot be fed; only
+  REPL commands are typed. Most CP problems are input-driven, so this alone is fatal.
+- **Speed.** Execution is a combinator interpreter, ~GHCi class — orders of magnitude
+  slower than compiled GHC. CP solutions are written for compiled speed.
+- **No data structures.** No `Data.Map`/`Set`/`Sequence`, and `Data.Array` is missing
+  (it lives in the `array-mhs` package), so the usual toolkit is unavailable.
+- No fast-IO idioms (`ByteString` exists, but not wired to stdin), no seeking.
+
+### Sharing snippets / playground use
+
+- Sharing itself is unaffected — LiveCodes already handles URLs, gists, snippets, embeds;
+  the viewer just pays one ~1.9 MB download and a ~2.4–4.5 s boot.
+- **Portability is the catch in both directions:** extensions are always on and the
+  library set differs, so a snippet written here may not compile in GHC (and vice versa).
+  Anything restricted to the shared core (Prelude, `Data.List/Maybe/Text/ByteString`,
+  typeclasses, ADTs, folds) travels fine.
+- Interactive snippets (reading input) will not work until stdin is wired.
+- Randomness and dates are unavailable (`System.Random`, `Data.Time`), so clock/RNG-based
+  demos won't run; `System.CPUTime` exists but not `Data.Time`.
+
+
 
 ## Recommendation for LiveCodes
 
@@ -127,6 +230,7 @@ public/canvhs-glue.js      Graphics.CanvHs JS glue (canvas, rAF, Web Audio)
 public/mhs/                pinned bundle + VERSION.md
 scripts/node-repl-run.js   Node REPL driver — reproduces the browser protocol headlessly
 scripts/node-test.js       headless suite (5/5 passing)
+scripts/feature-probe.js   language-feature matrix (21/26) — `node scripts/feature-probe.js`
 scripts/node-run.js        Node probe for the batch/argv paths (documents inertness)
 serve.js                   zero-dependency static server (node serve.js [port])
 canvhs-proof.png           screenshot: Graphics.CanvHs drawing in Chrome
