@@ -1,0 +1,219 @@
+
+=== fetching sources ===
+cloning https://github.com/augustss/MicroHs.git
+Cloning into '/build/MicroHs'...
+cloning https://github.com/augustss/MicroCabal.git
+Cloning into '/build/MicroCabal'...
+2:--  packageDbPath  package lookup path
+7:packageDbPath = "$MHSPKG:/db:/db/mhs-0.16.6.0"
+
+=== building self-hosted mhs ===
+MicroHs, version 0.16.6.0, combinator file version v8.4
+
+
+=== building mcabal ===
+
+=== building cpphs (needed by packages that use CPP) ===
+
+=== installing base into /db ===
+Installing package dist-mcabal/base-0.16.6.0.pkg in /db/mhs-0.16.6.0
+mcabal: Building library base
+mcabal: Installing library base
+-- where did base land? --
+817973  /db/mhs-0.16.6.0/packages/base-0.16.6.0.pkg
+-- DB root --
+mhs-0.16.6.0
+total 900
+-rw-r--r-- 1 root root 817973 Sep 13 06:52 base-0.16.6.0.pkg
+-rw-r--r-- 1 root root    729 Sep 13 06:52 build.log
+-rw-r--r-- 1 root root  96052 Sep 13 05:29 packages.txt
+
+=== refreshing the package set ===
+Changing package random to random-mhs
+Changing package array to array-mhs
+mcabal: Retrieving Stackage package list
+
+=== installing array ===
+Changing package array to array-mhs
+Changing package random to random-mhs
+Changing package array to array-mhs
+Installing package dist-mcabal/ghc-compat-0.5.11.0.pkg in /db/mhs-0.16.6.0
+Installing package dist-mcabal/array-mhs-0.5.8.0.pkg in /db/mhs-0.16.6.0
+mcabal: Build package array-mhs
+mcabal: No package list, running 'update' command
+mcabal: Retrieving Stackage package list
+mcabal: Running 'fetch array-mhs'
+mcabal: Building in /db/packages/array-mhs-0.5.8.0
+mcabal: Building library array-mhs
+mcabal:   Build package ghc-compat
+mcabal:   Running 'fetch ghc-compat'
+mcabal:   Building in /db/packages/ghc-compat-0.5.11.0
+mcabal:   Building library ghc-compat
+mcabal:   Installing library ghc-compat
+mcabal: Return to building target
+mcabal: Installing library array-mhs
+ok: array
+
+=== installing transformers ===
+Installing package dist-mcabal/transformers-0.6.2.0.pkg in /db/mhs-0.16.6.0
+mcabal: Build package transformers
+mcabal: Running 'fetch transformers'
+mcabal: Building in /db/packages/transformers-0.6.2.0
+mcabal: Building library transformers
+mcabal: Installing library transformers
+ok: transformers
+
+=== installing mtl ===
+Installing package dist-mcabal/mtl-2.3.2.pkg in /db/mhs-0.16.6.0
+mcabal: Build package mtl
+mcabal: Running 'fetch mtl'
+mcabal: Building in /db/packages/mtl-2.3.2
+mcabal: Building library mtl
+mcabal: Installing library mtl
+ok: mtl
+
+=== installing containers ===
+Changing package array to array-mhs
+Installing package dist-mcabal/containers-0.8.pkg in /db/mhs-0.16.6.0
+mcabal: Build package containers
+mcabal: Running 'fetch containers'
+mcabal: Building in /db/packages/containers-0.8
+mcabal: Building library containers
+mcabal: Installing library containers
+ok: containers
+
+=== collecting package DB files ===
+
+=== output ===
+    221157  array-mhs-0.5.8.0.pkg
+    817973  base-0.16.6.0.pkg
+      2916  build.log
+    480013  containers-0.8.pkg
+    244188  ghc-compat-0.5.11.0.pkg
+        24  mhs-0.16.6.0/Control/Applicative/Backwards.txt
+        24  mhs-0.16.6.0/Control/Applicative/Lift.txt
+        13  mhs-0.16.6.0/Control/Monad/Accum.txt
+        13  mhs-0.16.6.0/Control/Monad/Cont.txt
+        13  mhs-0.16.6.0/Control/Monad/Cont/Class.txt
+        13  mhs-0.16.6.0/Control/Monad/Error/Class.txt
+        13  mhs-0.16.6.0/Control/Monad/Except.txt
+        13  mhs-0.16.6.0/Control/Monad/Identity.txt
+        13  mhs-0.16.6.0/Control/Monad/RWS.txt
+        13  mhs-0.16.6.0/Control/Monad/RWS/CPS.txt
+        13  mhs-0.16.6.0/Control/Monad/RWS/Class.txt
+        13  mhs-0.16.6.0/Control/Monad/RWS/Lazy.txt
+        13  mhs-0.16.6.0/Control/Monad/RWS/Strict.txt
+        13  mhs-0.16.6.0/Control/Monad/Reader.txt
+        13  mhs-0.16.6.0/Control/Monad/Reader/Class.txt
+        13  mhs-0.16.6.0/Control/Monad/Select.txt
+        24  mhs-0.16.6.0/Control/Monad/Signatures.txt
+        13  mhs-0.16.6.0/Control/Monad/State.txt
+        13  mhs-0.16.6.0/Control/Monad/State/Class.txt
+        13  mhs-0.16.6.0/Control/Monad/State/Lazy.txt
+        13  mhs-0.16.6.0/Control/Monad/State/Strict.txt
+        13  mhs-0.16.6.0/Control/Monad/Trans.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Accum.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Class.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Cont.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Except.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Identity.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Maybe.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/RWS.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/RWS/CPS.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/RWS/Lazy.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/RWS/Strict.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Reader.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Select.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/State.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/State/Lazy.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/State/Strict.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Writer.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Writer/CPS.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Writer/Lazy.txt
+        24  mhs-0.16.6.0/Control/Monad/Trans/Writer/Strict.txt
+        13  mhs-0.16.6.0/Control/Monad/Writer.txt
+        13  mhs-0.16.6.0/Control/Monad/Writer/CPS.txt
+        13  mhs-0.16.6.0/Control/Monad/Writer/Class.txt
+        13  mhs-0.16.6.0/Control/Monad/Writer/Lazy.txt
+        13  mhs-0.16.6.0/Control/Monad/Writer/Strict.txt
+        21  mhs-0.16.6.0/Data/Array.txt
+        21  mhs-0.16.6.0/Data/Array/Base.txt
+        21  mhs-0.16.6.0/Data/Array/IArray.txt
+        21  mhs-0.16.6.0/Data/Array/IO.txt
+        21  mhs-0.16.6.0/Data/Array/IO/Internals.txt
+        21  mhs-0.16.6.0/Data/Array/IO/Safe.txt
+        21  mhs-0.16.6.0/Data/Array/MArray.txt
+        21  mhs-0.16.6.0/Data/Array/MArray/Safe.txt
+        21  mhs-0.16.6.0/Data/Array/ST.txt
+        21  mhs-0.16.6.0/Data/Array/ST/Safe.txt
+        21  mhs-0.16.6.0/Data/Array/Storable.txt
+        21  mhs-0.16.6.0/Data/Array/Storable/Internals.txt
+        21  mhs-0.16.6.0/Data/Array/Storable/Safe.txt
+        21  mhs-0.16.6.0/Data/Array/Unboxed.txt
+        21  mhs-0.16.6.0/Data/Array/Unsafe.txt
+        18  mhs-0.16.6.0/Data/Containers/ListUtils.txt
+        24  mhs-0.16.6.0/Data/Functor/Constant.txt
+        24  mhs-0.16.6.0/Data/Functor/Reverse.txt
+        18  mhs-0.16.6.0/Data/Graph.txt
+        18  mhs-0.16.6.0/Data/IntMap.txt
+        18  mhs-0.16.6.0/Data/IntMap/Internal.txt
+        18  mhs-0.16.6.0/Data/IntMap/Internal/Debug.txt
+        18  mhs-0.16.6.0/Data/IntMap/Lazy.txt
+        18  mhs-0.16.6.0/Data/IntMap/Merge/Lazy.txt
+        18  mhs-0.16.6.0/Data/IntMap/Merge/Strict.txt
+        18  mhs-0.16.6.0/Data/IntMap/Strict.txt
+        18  mhs-0.16.6.0/Data/IntMap/Strict/Internal.txt
+        18  mhs-0.16.6.0/Data/IntSet.txt
+        18  mhs-0.16.6.0/Data/IntSet/Internal.txt
+        18  mhs-0.16.6.0/Data/IntSet/Internal/IntTreeCommons.txt
+        18  mhs-0.16.6.0/Data/Map.txt
+        18  mhs-0.16.6.0/Data/Map/Internal.txt
+        18  mhs-0.16.6.0/Data/Map/Internal/Debug.txt
+        18  mhs-0.16.6.0/Data/Map/Lazy.txt
+        18  mhs-0.16.6.0/Data/Map/Merge/Lazy.txt
+        18  mhs-0.16.6.0/Data/Map/Merge/Strict.txt
+        18  mhs-0.16.6.0/Data/Map/Strict.txt
+        18  mhs-0.16.6.0/Data/Map/Strict/Internal.txt
+        18  mhs-0.16.6.0/Data/Sequence.txt
+        18  mhs-0.16.6.0/Data/Sequence/Internal.txt
+        18  mhs-0.16.6.0/Data/Sequence/Internal/Sorting.txt
+        18  mhs-0.16.6.0/Data/Set.txt
+        18  mhs-0.16.6.0/Data/Set/Internal.txt
+        18  mhs-0.16.6.0/Data/Tree.txt
+        23  mhs-0.16.6.0/GHC/Conc.txt
+        23  mhs-0.16.6.0/GHC/Conc/Sync.txt
+        23  mhs-0.16.6.0/GHC/Exts.txt
+        23  mhs-0.16.6.0/GHC/Fingerprint.txt
+        23  mhs-0.16.6.0/GHC/Float.txt
+        23  mhs-0.16.6.0/GHC/Foreign.txt
+        23  mhs-0.16.6.0/GHC/IO.txt
+        23  mhs-0.16.6.0/GHC/IO/Buffer.txt
+        23  mhs-0.16.6.0/GHC/IO/Encoding.txt
+        23  mhs-0.16.6.0/GHC/IO/Encoding/Failure.txt
+        23  mhs-0.16.6.0/GHC/IO/Encoding/Iconv.txt
+        23  mhs-0.16.6.0/GHC/IO/Encoding/Latin1.txt
+        23  mhs-0.16.6.0/GHC/IO/Encoding/Types.txt
+        23  mhs-0.16.6.0/GHC/IO/Encoding/UTF16.txt
+        23  mhs-0.16.6.0/GHC/IO/Encoding/UTF32.txt
+        23  mhs-0.16.6.0/GHC/IO/Encoding/UTF8.txt
+        23  mhs-0.16.6.0/GHC/IO/Exception.txt
+        23  mhs-0.16.6.0/GHC/IO/String.txt
+        23  mhs-0.16.6.0/GHC/IORef.txt
+        23  mhs-0.16.6.0/GHC/Internal/Conc/Signal.txt
+        23  mhs-0.16.6.0/GHC/Internal/IO/Device.txt
+        23  mhs-0.16.6.0/GHC/Internal/Types.txt
+        23  mhs-0.16.6.0/GHC/ResponseFile.txt
+        23  mhs-0.16.6.0/GHC/ST.txt
+        23  mhs-0.16.6.0/GHC/Stack.txt
+        23  mhs-0.16.6.0/GHC/TopHandler.txt
+        23  mhs-0.16.6.0/GHC/TypeLits.txt
+        23  mhs-0.16.6.0/GHC/Types.txt
+        23  mhs-0.16.6.0/GHC/Word.txt
+        23  mhs-0.16.6.0/Language/Haskell/TH/Quote.txt
+        23  mhs-0.16.6.0/Language/Haskell/TH/Syntax.txt
+        23  mhs-0.16.6.0/System/Posix/Internals.txt
+    259214  mtl-2.3.2.pkg
+     96052  packages.txt
+    279699  transformers-0.6.2.0.pkg
+
+=== done ===

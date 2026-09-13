@@ -85,9 +85,9 @@ Useful REPL commands (from `:help`): `:reload`, `:clear`, `:delete`, `:type`, `:
 | --- | --- |
 | **Worker context is unreliable** | `RangeError: Maximum call stack size exceeded` inside `mhs-embed.wasm` (`wasm-function[74]` recursing), caught via worker `unhandledrejection`. 1 success, 3+ failures with identical code. Worker runs on a smaller JS stack than the main thread, which this wasm build needs. |
 | **No interrupt / timeout on the main thread** | An infinite `main` blocks the tab; there is no way to interrupt a running emscripten instance. The worker would have provided this, but is not viable. |
-| **stdin not supported** | The program's own `getLine` is not wired; only REPL commands can be typed. Unverified/unsupported for v1. |
+| **stdin not supported natively** | Verified three ways (fd-0 callback, chars pre-queued, chars during the run): the program's `getLine`/`getContents` always see EOF — the REPL's input queue is separate from the program's stdin. Replaced by a pure shim (`lcInput`/`lcInputLines`/`lcInputWords`), implemented and verified. |
 | **Module caching** | Mitigated by `:reload`, but the REPL remains a stateful, accumulating session. |
-| **Not GHC** | MicroHs is an extended Haskell 2010 implementation at ~GHCi speed with its own error messages (`"Data/List.hs",389:11`). Many extensions *do* work (GADTs, RankNTypes, TypeApplications, OverloadedStrings, record dot); `TypeFamilies`, Template Haskell and `DeriveGeneric` do not. Packages outside the embedded set are unavailable in the browser (see capability profile). |
+| **Not GHC** | MicroHs is an extended Haskell 2010 implementation at ~GHCi speed with its own error messages (`"Data/List.hs",389:11`). Many extensions *do* work (GADTs, RankNTypes, TypeApplications, OverloadedStrings, record dot); `TypeFamilies`, Template Haskell and `DeriveGeneric` do not. The common ecosystem packages (`containers`, `mtl`, `array`) are loaded at runtime; others are not packaged yet. |
 | Browser coverage | Only Chrome was available here; Safari/Firefox/mobile unverified. `web-mhs` has known Safari quirks. |
 
 ## Capability profile (what a user actually gets)
@@ -117,7 +117,10 @@ that should be errors are not reported**.
 `TypeFamilies`, Template Haskell and `DeriveGeneric` are the notable modern-GHC
 omissions; everything a typical introductory-to-intermediate course needs is present.
 
-### Library modules — 76/97 probed available
+### Library modules — 91/97 probed available
+
+`Data.Map`/`Data.Set`/`Data.Sequence`, `Control.Monad.State` and `Data.Array` are now shipped
+(see "Bundle additions"), so the earlier tutorial-staple gaps are closed.
 
 Present: `Prelude`, `Data.List/Maybe/Char/Either/Tuple`, **`Data.Text` (+Lazy, IO,
 Encoding)**, **`Data.ByteString` (+Char8, Lazy, Short, Builder)**, `Data.Ratio`,
@@ -129,18 +132,20 @@ Encoding)**, **`Data.ByteString` (+Char8, Lazy, Short, Builder)**, `Data.Ratio`,
 `Text.Printf`, `Text.Read`, `Text.ParserCombinators.ReadP`, `Numeric`, `Data.Version`,
 `Debug.Trace`, `Foreign*`, `Unsafe.Coerce`, `Graphics.CanvHs`.
 
-Missing (verified "Module not found"):
-`Data.Map`, `Data.Set`, `Data.Sequence`, `Data.IntMap`, `Data.Tree` (**containers**);
-`Control.Monad.State/Reader/Writer/Except/RWS` (**mtl**);
-`Data.Array*` (**array**); `Text.Parsec`, `Text.Megaparsec`;
-`System.Random`; `Data.Time`; `Test.HUnit`, `Test.QuickCheck`, `Test.Hspec`;
-`Data.Vector`, `Control.Lens`, `Data.Aeson`.
+Originally missing, now **shipped as runtime packages** (verified importable):
+**`containers`** (`Data.Map`, `Data.Set`, `Data.Sequence`, `Data.IntMap`, `Data.IntSet`,
+`Data.Tree`, `Data.Graph`), **`mtl`** (`Control.Monad.State/Reader/Writer/Except/RWS`) via
+`transformers`, and **`array`** (`Data.Array`, `Data.Array.ST`, `Data.Array.IO`), plus the
+`ghc-compat` shim that `containers` needs. See "Bundle additions" below; this raised the probed
+availability from 76/97 to 91/97.
 
-**Important nuance:** those missing packages *do* work with MicroHs locally
-(`Makefile.packages` builds containers, mtl, array, transformers, parsec, QuickCheck,
-HUnit, hspec, random, binary, fingertree, heaps, fgl, …). The gap is only that the
-browser bundle embeds `base` + `canvhs`. Which packages get embedded is a bundling
-decision, so `Data.Map`/`mtl` could be closed at the cost of download size.
+Still missing (verified "Module not found"):
+`Text.Parsec`, `Text.Megaparsec`; `System.Random`; `Data.Time`;
+`Test.HUnit`, `Test.QuickCheck`, `Test.Hspec`; `Data.Vector`, `Control.Lens`, `Data.Aeson`.
+
+Those all build with MicroHs too (`Makefile.packages` lists transformers, parsec, QuickCheck,
+HUnit, hspec, random, binary, fingertree, heaps, fgl, …), so closing them is the same
+packaging step rather than a compiler limitation.
 
 Also from the wiki's compliance table, even "present" modules are incomplete in places:
 `System.IO` lacks `hSeek`/`hTell`/`hIsEOF`/`hPrint`/`HandlePosn`/`SeekMode`;
@@ -157,9 +162,9 @@ Mostly no, with three real caveats:
    `Module not found: Data.Map`), but there is no GHC-quality type-error explanation.
    The FAQ's answer — *"Why are the error messages so bad? Error messages are boring."* —
    is a design stance. For someone learning types, this is the biggest drawback.
-2. **Missing tutorial staples:** no `Data.Map`/`Data.Set` (word-count, memoisation,
-   graph examples), no `Control.Monad.State` (monad-transformer chapters), no
-   `hspec`/`HUnit`/`QuickCheck` (testing chapters). All fixable by embedding more packages.
+2. **Testing frameworks still missing:** `hspec`/`HUnit`/`QuickCheck` are not packaged yet.
+   `Data.Map`/`Data.Set`/`State`/`Array` now work, so word-count, memoisation and
+   monad-transformer examples are fine.
 3. **Weak safety net:** things that should be errors often are not, so a learner gets
    less feedback than GHC would give.
 
@@ -171,12 +176,14 @@ TypeApplications, OverloadedStrings and record dot all work, so even an advanced
 
 Effectively out of scope:
 
-- **No stdin.** Verified: the program's own `getLine`/`getContents` cannot be fed; only
-  REPL commands are typed. Most CP problems are input-driven, so this alone is fatal.
+- **Input needs the shim.** `getLine`/`getContents` cannot work (see limitations), but the
+  `lcInput`/`lcInputLines`/`lcInputWords` bindings make input-driven exercises possible, so
+  this is an API difference to document rather than a blocker.
 - **Speed.** Execution is a combinator interpreter, ~GHCi class — orders of magnitude
   slower than compiled GHC. CP solutions are written for compiled speed.
-- **No data structures.** No `Data.Map`/`Set`/`Sequence`, and `Data.Array` is missing
-  (it lives in the `array-mhs` package), so the usual toolkit is unavailable.
+- **Data structures are now available** — `Data.Map`/`Set`/`Sequence`/`Array` ship with the
+  bundle — so the remaining blocker is speed, not tooling: an interpreter cannot meet CP
+  time limits.
 - No fast-IO idioms (`ByteString` exists, but not wired to stdin), no seeking.
 
 ### Sharing snippets / playground use
@@ -187,9 +194,122 @@ Effectively out of scope:
   library set differs, so a snippet written here may not compile in GHC (and vice versa).
   Anything restricted to the shared core (Prelude, `Data.List/Maybe/Text/ByteString`,
   typeclasses, ADTs, folds) travels fine.
-- Interactive snippets (reading input) will not work until stdin is wired.
+- Interactive snippets work only through the input shim (`lcInput`/`lcInputLines`/`lcInputWords`),
+  not `getLine`; snippet authors need to know the difference.
 - Randomness and dates are unavailable (`System.Random`, `Data.Time`), so clock/RNG-based
   demos won't run; `System.CPUTime` exists but not `Data.Time`.
+
+
+
+## Bundle additions (implemented)
+
+### 1. Runtime package loading — `Data.Map`, `mtl`, `Data.Array`, …
+
+Adding packages does **not** require rebuilding the wasm (which would need Emscripten). The
+bundle already embeds `base` + `canvhs`; extra packages can be loaded at runtime instead:
+
+- fetch a package DB into the virtual FS, then add it to the compiler's search path with
+  `-a/pkgs` (MicroHs's `-aPATH` appends to the package path);
+- DB layout (from `src/MicroHs/Package.hs`): `packages/<name>.pkg` plus one `<Module>.txt`
+  per exported module containing the pkg file name (e.g. `Data/Map.txt` → `containers-0.7.pkg`).
+
+Implemented in `public/repl-runner.js` (`loadPackages()` + `boot()`), documented in
+`public/pkgs/packages/README.txt`, file list in `public/pkgs/index.json`.
+
+**Verified:** the compiler reports
+
+```
+package path=["./../mhs-0.16.6.0","/pkgs"]
+```
+
+so the extra search path is live and consulted; `import Data.Map` still says
+`Module not found` only because no `containers` package file exists yet.
+
+### 2. Usable compile diagnostics
+
+Compile errors surface during `import Main` / `:reload`; `:main` then only says
+`undefined value: main`. Capturing those steps turns a useless message into e.g.
+
+```
+*** Exception: error: "./Main.hs": line 3, col 19: Cannot satisfy constraint: IsString _a3
+```
+
+Implemented in both runners (browser + Node), de-duplicated because both steps can report
+the same diagnostic. Verified in Chrome and headlessly.
+
+### 3. Input shim
+
+Native stdin is unusable, so the harness appends pure bindings to the user's module:
+
+```haskell
+lcInput      :: String     -- the whole input box
+lcInputLines :: [String]
+lcInputWords :: [String]
+```
+
+Appended at the end of the module, so it needs no imports and cannot clash with the header.
+Wired to the harness's input box and verified (`1 2 3 4 5` → `15`).
+
+### Building the package files — done
+
+Generating packages needs MicroHs to compile them. Two dead ends first:
+
+1. `cabal build` produces a working `mhs` (GHC flavour) — **but it cannot write packages**:
+   `System.IO.Serialize` is stubbed with *"serialization not available with ghc"*.
+2. The **self-hosted** compiler must be built from the shipped `generated/mhs.c`. That builds
+   on Windows/mingw with three fixes (the `mingw` runtime config, `-DINLINE=inline`, and
+   `setenv`/`unsetenv` shims with prototypes force-included, since gcc >= 14 rejects implicit
+   declarations) — but the result **segfaults (`0xC0000005`) compiling `base`**. The `mingw`
+   runtime config is not the supported Windows path (`Makefile.windows` targets MSVC).
+
+It worked immediately on Linux, in a container — no GHC needed, only a C compiler:
+
+```
+docker run --rm -v <repo>/scripts:/scripts:ro -v <repo>/.build/pkgs:/out ubuntu:24.04 \
+  bash -c "apt-get update -qq && apt-get install -y -qq build-essential git curl ca-certificates >/dev/null \
+           && cp /scripts/build-packages-linux.sh /tmp/b.sh && WORK=/build OUT=/out DB=/db bash /tmp/b.sh"
+```
+
+`scripts/build-packages-linux.sh` does the whole chain: clone MicroHs at the pinned commit →
+build the self-hosted `mhs` → build `mcabal` → build `cpphs` → install `base` → install
+`array transformers mtl containers` (each with `-r` for dependencies) → emit the DB.
+Gotchas encoded in the script: `-P<name>` must be joined (`-Pbase-0.16.6.0`, no space); flags
+must precede the `install` command and mcabal takes one package at a time; `curl` must be
+present (mcabal shells out to it for the Stackage snapshot); and `packageDbPath` in the
+generated `mhs.conf` must point at the DB, otherwise dependency packages fail with
+*"Module not found: Prelude"*.
+
+Produced (MicroHs 0.16.6.0, combinator file v8.4 — matching the bundle exactly):
+
+| package | size |
+| --- | --- |
+| `base-0.16.6.0.pkg` | 817,973 B (not shipped — base is embedded) |
+| `containers-0.8.pkg` | 480,013 B |
+| `transformers-0.6.2.0.pkg` | 279,699 B |
+| `mtl-2.3.2.pkg` | 259,214 B |
+| `ghc-compat-0.5.11.0.pkg` | 244,188 B (a dependency of containers) |
+| `array-mhs-0.5.8.0.pkg` | 221,157 B |
+
+The 5 shipped packages plus 122 module maps total **1.42 MB** and live in `public/pkgs/`
+(`packages/*.pkg` + `<Module>.txt`), listed in `public/pkgs/index.json` (127 entries).
+
+**Verified in Chrome** — the harness loads the DB (`loaded 127 package file(s)`), the runtime
+reports `Loading package /pkgs/packages/containers-0.8.pkg`, and a program using all three
+families runs correctly:
+
+```haskell
+import qualified Data.Map as M
+import qualified Data.Set as S
+import Data.Array
+import Control.Monad.State
+-- [(1,100),(2,200)]  [1,2,3]  [10,20,30]  [0,1,2]
+```
+
+A probe of the 15 previously-missing modules (`Data.Sequence`, `Data.IntMap`,
+`Data.Map.Strict/Lazy`, `Control.Monad.Reader/Writer/Except/RWS`, `Control.Monad.Trans.State`,
+`Data.Array.ST/IO`, `Data.Tree`, `Data.Graph`, `Data.IntSet`, `Data.Functor.Identity`) now
+reports **OK** for all of them. Adding a package is therefore: build its `.pkg`, drop it and
+its module maps in `public/pkgs/`, and add them to `index.json` — the wasm is untouched.
 
 
 
@@ -222,22 +342,33 @@ build-and-release task (GHC + Emscripten + MicroHs bootstrap), not a spike.
 ## Layout
 
 ```
-public/index.html          harness UI (engine/mode/timeout, source, output, canvas, log)
-public/repl-runner.js      main-thread REPL driver (verified in Chrome)
-public/worker-runner.js    worker client with boot+run timeout (worker itself unreliable)
-public/haskell-worker.js   worker-side REPL driver + diagnostics
-public/canvhs-glue.js      Graphics.CanvHs JS glue (canvas, rAF, Web Audio)
-public/mhs/                pinned bundle + VERSION.md
-scripts/node-repl-run.js   Node REPL driver — reproduces the browser protocol headlessly
-scripts/node-test.js       headless suite (5/5 passing)
-scripts/feature-probe.js   language-feature matrix (21/26) — `node scripts/feature-probe.js`
-scripts/node-run.js        Node probe for the batch/argv paths (documents inertness)
-serve.js                   zero-dependency static server (node serve.js [port])
-canvhs-proof.png           screenshot: Graphics.CanvHs drawing in Chrome
-hello.hs                   sample program
+public/index.html            harness UI (source, input, engine/mode/timeout, canvas, log)
+public/repl-runner.js        main-thread REPL driver (verified in Chrome)
+public/worker-runner.js      worker client with boot+run timeout (worker itself unreliable)
+public/haskell-worker.js     worker-side REPL driver + diagnostics
+public/canvhs-glue.js        Graphics.CanvHs JS glue (canvas, rAF, Web Audio)
+public/mhs/                  pinned bundle + VERSION.md
+public/pkgs/                  runtime package DB: packages/*.pkg + <Module>.txt
+                               + index.json (127 entries, 1.42 MB): containers, mtl,
+                               array, transformers, ghc-compat
+scripts/build-packages-linux.sh   builds those .pkg files (Docker/Ubuntu; see above)
+scripts/node-repl-run.js     Node REPL driver — reproduces the browser protocol headlessly
+scripts/node-test.js         headless suite (5/5 passing)
+scripts/feature-probe.js     language-feature matrix (21/26) — `node scripts/feature-probe.js`
+scripts/probe-stdin.js       demonstrates that program stdin is dead (EOF)
+scripts/node-run.js          Node probe for the batch/argv paths (documents inertness)
+scripts/build-microhs-packages.ps1  Windows/mingw attempt (MSVC needed; see above)
+serve.js                     zero-dependency static server (node serve.js [port])
+canvhs-proof.png             screenshot: Graphics.CanvHs drawing in Chrome
+hello.hs                     sample program
 ```
+
+Module inventory (embedded modules):
+`node scripts/node-repl-run.js --probe-imports Prelude,Data.Map,...`.
+Package-provided modules are exercised through the browser harness, which loads the DB.
 
 Reproduce:
 
-- headless protocol: `node scripts/node-test.js`
+- headless suite: `node scripts/node-test.js`
+- feature matrix: `node scripts/feature-probe.js`
 - browser flow: `node serve.js`, then open http://localhost:8123/

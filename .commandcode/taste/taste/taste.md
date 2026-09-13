@@ -1,0 +1,11 @@
+# Taste
+- Prefers de-risking risky integrations with a standalone proof-of-concept spike (a self-contained page/worker harness) before touching upstream code or opening a PR. Confidence: 0.7
+- Prefers automated browser verification (installing/using a browser-driving tool) over manually checking results himself. Confidence: 0.6
+- Judges a technology by prospective end-user value, not just technical feasibility — asks what a real user (a learner, someone solving competitive-programming problems, someone sharing snippets) would actually be missing, and wants concrete gaps enumerated. Confidence: 0.6
+- Requires new capabilities to run fully client-side in the browser (no server-side execution path). Confidence: 0.65
+- Expects new features/integrations to mirror the existing implementations and architecture in the project (e.g. new language = follow the established `*-wasm` pattern) rather than inventing a parallel approach. Confidence: 0.6
+- Comfortable with global npm installs of dev/verification tooling when it unblocks validation. Confidence: 0.6
+- Prefers working around environment/toolchain blockers instead of accepting them — when a build failed on the native Windows toolchain, he asked to retry it in WSL/Docker rather than settle for a documented limitation. Confidence: 0.65
+- Works on Windows with PowerShell but treats Linux containers (WSL/Docker) as an acceptable execution environment when the Windows toolchain is unsupported. Confidence: 0.6
+- Communicates in terse approvals and continuations ("yes, do that additions to bundle", "continue"), typically accepting the recommended option and letting the agent proceed autonomously rather than micromanaging. Confidence: 0.6
+- Cares about the provenance/authenticity of third-party dependencies — wants to know whether bundled libraries are genuine upstream releases versus project-specific re-implementations or forks, rather than assuming. Confidence: 0.5

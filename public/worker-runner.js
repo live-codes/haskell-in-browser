@@ -128,7 +128,14 @@
             resolve: (r) => settle(resolve, r),
             reject: (e) => settle(reject, e),
           });
-          worker.postMessage({ type: 'run', id, source, mode: opts.mode || 'run', expr: opts.expr });
+          worker.postMessage({
+            type: 'run',
+            id,
+            source,
+            mode: opts.mode || 'run',
+            expr: opts.expr,
+            input: opts.input,
+          });
         })
         .catch((err) => settle(reject, err));
     });

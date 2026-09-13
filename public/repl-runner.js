@@ -18,6 +18,8 @@
 const HOME = '/home/web_user';
 const MAIN_FILE = 'Main.hs';
 const PROMPT = '<<<LC_PROMPT>>>';
+const PKG_DIR = '/pkgs';
+const PKG_INDEX = 'pkgs/index.json';
 
 const state = {
   raw: '',
@@ -27,7 +29,66 @@ const state = {
   exitCode: null,
   fatal: null,
   module: null,
+  packages: {},
 };
+
+/**
+ * Fetch extra MicroHs packages (package DB files) so `import Data.Map` etc. work.
+ * Layout matches MicroHs: pkgs/packages/<name>.pkg plus a <Module>.txt per exported
+ * module containing the package file name. `-a/pkgs` adds it to the search path.
+ */
+async function loadPackages() {
+  try {
+    const res = await fetch(PKG_INDEX, { cache: 'no-store' });
+    if (!res.ok) return {};
+    const files = await res.json();
+    const out = {};
+    await Promise.all(
+      files.map(async (rel) => {
+        const r = await fetch('pkgs/' + rel, { cache: 'force-cache' });
+        if (!r.ok) return;
+        out[rel] = new Uint8Array(await r.arrayBuffer());
+      }),
+    );
+    emit('log', 'loaded ' + Object.keys(out).length + ' package file(s)');
+    return out;
+  } catch (err) {
+    emit('log', 'package load skipped: ' + (err && err.message ? err.message : err));
+    return {};
+  }
+}
+
+/** Escape a string as a Haskell string literal. */
+function toHaskellString(text) {
+  return String(text)
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+/**
+ * Program stdin is not wired in this build (System.IO reads fd 0, which is EOF),
+ * so provide the input as pure bindings the program can use. Appended to the end
+ * of the user's module, which is order-independent in Haskell and needs no imports.
+ */
+function stdinShim(input) {
+  const lit = toHaskellString(input);
+  return [
+    '',
+    '-- stdin shim (LiveCodes): this build cannot read stdin at the system level',
+    'lcInput :: String',
+    'lcInput = "' + lit + '"',
+    '',
+    'lcInputLines :: [String]',
+    'lcInputLines = lines lcInput',
+    '',
+    'lcInputWords :: [String]',
+    'lcInputWords = words lcInput',
+    '',
+  ].join('\n');
+}
 
 const listeners = { log: [], exit: [] };
 
@@ -85,6 +146,9 @@ function clean(text, sentLines) {
     /^Welcome to interactive MicroHs/,
     /^Integer implemented with imath/,
     /^Loading embedded package /,
+    /^Loading package /,
+    /^loaded /,
+    /^Type ':quit' to quit/,
   ];
   return noAnsi
     .split('\n')
@@ -120,12 +184,17 @@ function classify(text) {
 }
 
 /** Boot the Emscripten module; resolves when the first prompt is seen. */
-function boot() {
+async function boot() {
+  state.packages = await loadPackages();
+  // `-aPATH` appends to the package search path, so packages fetched into the
+  // virtual FS become importable.
+  const args = Object.keys(state.packages).length ? ['-a' + PKG_DIR] : [];
+
   return new Promise((resolve, reject) => {
     const rc = ':set prompt=' + PROMPT + '\n';
 
     const Module = {
-      arguments: [],
+      arguments: args,
       locateFile: (p) => 'mhs/' + p,
       preRun: [
         function () {
@@ -133,6 +202,13 @@ function boot() {
           Module.FS.chdir(HOME);
           Module.FS.writeFile('.mhsi_rc', rc);
           Module.FS.writeFile(MAIN_FILE, '');
+          for (const rel of Object.keys(state.packages)) {
+            const parts = rel.split('/');
+            const file = parts.pop();
+            const dir = PKG_DIR + (parts.length ? '/' + parts.join('/') : '');
+            Module.FS.mkdirTree(dir);
+            Module.FS.writeFile(dir + '/' + file, state.packages[rel]);
+          }
         },
       ],
       // initRuntime() calls FS.init() with no arguments, which takes these.
@@ -189,13 +265,17 @@ async function runHaskell(options) {
 
   state.running = true;
   const opts = options || {};
-  const source = String(opts.source || '');
+  const input = opts.input == null ? '' : String(opts.input);
+  // Program stdin is unavailable in this build, so expose it as pure bindings.
+  const source = String(opts.source || '') + (input ? stdinShim(input) : '');
   const expr = String(opts.expr || '');
 
   try {
     const sent = [];
     let baseline = promptCount();
     let mark;
+    let importOut = '';
+    let reloadOut = '';
 
     if (opts.mode === 'eval') {
       sent.push(expr);
@@ -204,16 +284,13 @@ async function runHaskell(options) {
       await waitUntil(() => promptCount() > baseline, 30000, 'expression');
     } else {
       state.module.FS.writeFile(MAIN_FILE, source);
-      sent.push('import Main');
-      await typeLine('import Main');
-      await waitUntil(() => promptCount() > baseline, 30000, 'import Main');
-
+      // `import Main` triggers compilation, so compile diagnostics appear here;
+      // :main then only reports "undefined value: main". Both steps are checked
+      // because which one reports depends on whether Main was already loaded.
+      importOut = await step('import Main', sent, 30000);
       // The REPL caches compiled modules, so a changed Main.hs is not picked up
       // by re-importing alone. :reload recompiles loaded modules from source.
-      baseline = promptCount();
-      sent.push(':reload');
-      await typeLine(':reload');
-      await waitUntil(() => promptCount() > baseline, 30000, ':reload');
+      reloadOut = await step(':reload', sent, 30000);
 
       baseline = promptCount();
       mark = state.raw.length;
@@ -223,9 +300,14 @@ async function runHaskell(options) {
     }
 
     const res = classify(clean(state.raw.slice(mark), sent));
+    const cImport = classify(importOut);
+    const cReload = classify(reloadOut);
+    const compileRaw = importOut.trim() ? importOut : reloadOut;
+    const compileError =
+      cImport.error || cReload.error || (compileRaw.trim() ? compileRaw.trim() : null);
     return {
       output: res.output,
-      error: res.error || state.fatal,
+      error: compileError || res.error || state.fatal,
       exitCode: state.exitCode == null ? 0 : state.exitCode,
       raw: state.raw,
     };
@@ -239,6 +321,16 @@ async function runHaskell(options) {
   } finally {
     state.running = false;
   }
+
+  /** Type a REPL command, wait for the next prompt, return the cleaned output. */
+  async function step(line, sentLines, timeoutMs) {
+    const baseline = promptCount();
+    const from = state.raw.length;
+    sentLines.push(line);
+    await typeLine(line);
+    await waitUntil(() => promptCount() > baseline, timeoutMs, line);
+    return clean(state.raw.slice(from), [line]);
+  }
 }
 
 window.mhsRepl = {
@@ -250,4 +342,5 @@ window.mhsRepl = {
   send: typeLine,
   getRaw: () => state.raw,
   promptCount,
+  stdinShim,
 };

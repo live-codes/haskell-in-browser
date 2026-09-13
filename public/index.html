@@ -167,7 +167,8 @@ main = do
         >
 
         <label for="stdin"
-          >stdin (note: interactive input path still under investigation)</label
+          >input — exposed as lcInput / lcInputLines / lcInputWords (getLine
+          cannot work: this build cannot read stdin)</label
         >
         <textarea id="stdin" spellcheck="false"></textarea>
 
@@ -241,14 +242,24 @@ main = do
       mhsWorker.onLog(log);
 
       async function runWithWorker(mode, expr, timeout) {
-        return mhsWorker.run($("source").value, { mode, expr, timeout });
+        return mhsWorker.run($("source").value, {
+          mode,
+          expr,
+          timeout,
+          input: $("stdin").value,
+        });
       }
 
       // The main-thread REPL also gives canvhs a DOM canvas, but a runaway
       // program blocks the tab (there is no way to interrupt it).
       async function runWithMain(mode, expr) {
         if (!mhsRepl.state.ready) await mhsRepl.boot();
-        return mhsRepl.runHaskell({ source: $("source").value, mode, expr });
+        return mhsRepl.runHaskell({
+          source: $("source").value,
+          mode,
+          expr,
+          input: $("stdin").value,
+        });
       }
 
       async function run() {

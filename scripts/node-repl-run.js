@@ -43,6 +43,7 @@ function clean(text, sentLines) {
     /^Welcome to interactive MicroHs/,
     /^Integer implemented with imath/,
     /^Loading embedded package /,
+    /^Loading package /,
     /^Type ':quit' to quit/,
     /^loaded /,
   ];
@@ -97,6 +98,8 @@ async function startRepl(opts) {
   const m = require(MHS_JS);
 
   m.locateFile = (p) => path.join(MHS_DIR, p);
+  // fd 0 returns EOF: program stdin is not usable, so input is provided through
+  // the stdin shim instead (see runRepl).
   m.stdin = () => null;
   m.stdout = (code) => code !== null && (state.raw += String.fromCharCode(code));
   m.stderr = (code) => code !== null && (state.raw += String.fromCharCode(code));
@@ -150,29 +153,67 @@ async function startRepl(opts) {
   return { state, m, promptCount, waitFor, typeLine, step, clean, classify };
 }
 
+/** Escape a string as a Haskell string literal. */
+function toHaskellString(text) {
+  return String(text)
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+/**
+ * Program stdin is not wired in this build (System.IO reads fd 0, which is EOF),
+ * so expose the input as pure bindings the program can use. Appended to the
+ * user's module: order-independent in Haskell and needs no imports.
+ */
+function stdinShim(input) {
+  return [
+    '',
+    '-- stdin shim: this build cannot read stdin at the system level',
+    'lcInput :: String',
+    'lcInput = "' + toHaskellString(input) + '"',
+    '',
+    'lcInputLines :: [String]',
+    'lcInputLines = lines lcInput',
+    '',
+    'lcInputWords :: [String]',
+    'lcInputWords = words lcInput',
+    '',
+  ].join('\n');
+}
+
 async function runRepl(options) {
   const opts = options || {};
-  const source = String(opts.source || '');
+  const input = opts.stdin == null ? '' : String(opts.stdin);
+  const source = String(opts.source || '') + (input ? stdinShim(input) : '');
   const s = await startRepl(opts);
 
   let cleaned;
-  let compileOut = '';
+  let importOut = '';
+  let reloadOut = '';
   if (opts.mode === 'eval') {
     cleaned = await s.step(String(opts.expr || ''));
   } else {
     s.m.FS.writeFile('Main.hs', source);
-    // `import Main` triggers compilation, so compile diagnostics appear here;
-    // :reload recompiles from source and :main then reports "undefined value: main".
-    compileOut = await s.step('import Main');
-    compileOut += '\n' + (await s.step(':reload'));
+    // Compilation is triggered by `import Main`; which step reports a diagnostic
+    // depends on whether Main was already loaded, so check both (not concatenated,
+    // to avoid duplicating the same message).
+    importOut = await s.step('import Main');
+    // The REPL caches modules; :reload recompiles from source.
+    reloadOut = await s.step(':reload');
     cleaned = await s.step(':main');
   }
 
   const mainRes = classify(cleaned);
-  const compileRes = classify(compileOut);
-  // A compile failure is reported by :reload; :main then only says
-  // "undefined value: main", so the compile diagnostic takes precedence.
-  const finalError = compileRes.error || (compileOut.trim() ? compileOut.trim() : null) || mainRes.error;
+  const cImport = classify(importOut);
+  const cReload = classify(reloadOut);
+  const compileRaw = importOut.trim() ? importOut : reloadOut;
+  // A compile failure is reported before :main, which only says
+  // "undefined value: main".
+  const finalError =
+    cImport.error || cReload.error || (compileRaw.trim() ? compileRaw.trim() : null) || mainRes.error;
 
   return {
     output: mainRes.output,
@@ -207,13 +248,14 @@ module.exports = { runRepl, probeImports, startRepl, PROMPT };
 
 if (require.main === module) {
   const a = process.argv.slice(2);
-  const args = { file: null, timeout: 60000, dump: false, mode: 'run', expr: '', probe: null };
+  const args = { file: null, timeout: 60000, dump: false, mode: 'run', expr: '', probe: null, stdin: '' };
   for (let i = 0; i < a.length; i++) {
     if (a[i] === '--file') args.file = a[++i];
     else if (a[i] === '--timeout') args.timeout = Number(a[++i]);
     else if (a[i] === '--dump') args.dump = true;
     else if (a[i] === '--mode') args.mode = a[++i];
     else if (a[i] === '--expr') args.expr = a[++i];
+    else if (a[i] === '--stdin') args.stdin = a[++i];
     else if (a[i] === '--probe-imports') args.probe = a[++i].split(',').filter(Boolean);
   }
 
@@ -234,6 +276,7 @@ if (require.main === module) {
           dump: args.dump,
           mode: args.mode,
           expr: args.expr,
+          stdin: args.stdin,
         }).then((r) => {
           process.stdout.write(JSON.stringify(r) + '\n');
         });

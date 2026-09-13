@@ -45,6 +45,38 @@ self.addEventListener('unhandledrejection', (e) => {
 let nStdout = 0;
 let nPrint = 0;
 
+/** Escape a string as a Haskell string literal. */
+function toHaskellString(text) {
+  return String(text)
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+}
+
+/**
+ * Program stdin is not wired in this build (System.IO reads fd 0, which is EOF),
+ * so expose the input as pure bindings. Appended to the user's module, which is
+ * order-independent in Haskell and needs no imports.
+ */
+function stdinShim(input) {
+  const lit = toHaskellString(input);
+  return [
+    '',
+    '-- stdin shim (LiveCodes): this build cannot read stdin at the system level',
+    'lcInput :: String',
+    'lcInput = "' + lit + '"',
+    '',
+    'lcInputLines :: [String]',
+    'lcInputLines = lines lcInput',
+    '',
+    'lcInputWords :: [String]',
+    'lcInputWords = words lcInput',
+    '',
+  ].join('\n');
+}
+
 function promptCount() {
   let n = 0;
   let i = 0;
@@ -77,6 +109,7 @@ function stripNoise(text, sentLines) {
     /^Welcome to interactive MicroHs/,
     /^Integer implemented with imath/,
     /^Loading embedded package /,
+    /^Loading package /,
     /^Type ':quit' to quit/,
     /^loaded /,
   ];
@@ -186,8 +219,9 @@ function boot() {
   });
 }
 
-async function runOnce(source, mode, expr) {
-  self.Module.FS.writeFile(MAIN_FILE, String(source || ''));
+async function runOnce(source, mode, expr, input) {
+  const src = String(source || '') + (input ? stdinShim(input) : '');
+  self.Module.FS.writeFile(MAIN_FILE, src);
   const sent = [];
 
   if (mode === 'eval') {
@@ -225,7 +259,7 @@ self.onmessage = async function (e) {
     }
     if (abortMessage) throw new Error(abortMessage);
     if (exited) throw new Error('REPL exited (exitCode ' + exitCode + '); restart the worker');
-    const result = await runOnce(msg.source, msg.mode, msg.expr);
+    const result = await runOnce(msg.source, msg.mode, msg.expr, msg.input);
     self.postMessage({ type: 'result', id: msg.id, json: JSON.stringify(result) });
   } catch (err) {
     self.postMessage({
